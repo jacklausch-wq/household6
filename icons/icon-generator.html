@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Household6 PWA Icon Generator</title>
+    <style>
+        :root {
+            --primary-color: #4A90A4;
+            --primary-dark: #3a7a8a;
+            --bg-color: #f5f5f5;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --border-radius: 12px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+        }
+
+        .upload-section {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .upload-area {
+            border: 3px dashed var(--primary-color);
+            border-radius: var(--border-radius);
+            padding: 60px 40px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f9fbfc;
+        }
+
+        .upload-area:hover {
+            background: #e8f4f8;
+            border-color: var(--primary-dark);
+        }
+
+        .upload-area.dragover {
+            background: #d0e8ef;
+            border-color: var(--primary-dark);
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            color: var(--primary-color);
+            margin-bottom: 20px;
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
+            color: #666;
+        }
+
+        .upload-hint {
+            font-size: 0.9rem;
+            color: #999;
+            margin-top: 10px;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .preview-section {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: none;
+        }
+
+        .preview-section.visible {
+            display: block;
+        }
+
+        .section-title {
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 10px;
+        }
+
+        .preview-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 40px;
+            flex-wrap: wrap;
+        }
+
+        .original-preview {
+            text-align: center;
+        }
+
+        .original-preview img {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .original-preview p {
+            margin-top: 10px;
+            color: #666;
+        }
+
+        .icons-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .icon-card {
+            background: #f9f9f9;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.2s ease;
+        }
+
+        .icon-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .icon-card canvas {
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            max-width: 100%;
+            height: auto;
+        }
+
+        .icon-card .size-label {
+            font-weight: 600;
+            color: var(--primary-color);
+            margin: 10px 0 5px;
+        }
+
+        .icon-card .filename {
+            font-size: 0.8rem;
+            color: #999;
+            word-break: break-all;
+        }
+
+        .download-btn {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 8px 16px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            text-decoration: none;
+            transition: background 0.2s ease;
+        }
+
+        .download-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        .download-all-section {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 1px solid #eee;
+        }
+
+        .download-all-btn {
+            padding: 15px 40px;
+            font-size: 1.1rem;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .download-all-btn:hover {
+            background: var(--primary-dark);
+            transform: scale(1.02);
+        }
+
+        .voice-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: var(--border-radius);
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: none;
+        }
+
+        .voice-section.visible {
+            display: block;
+        }
+
+        .voice-section .section-title {
+            color: white;
+            border-bottom-color: rgba(255,255,255,0.3);
+        }
+
+        .voice-icons-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .voice-icon-card {
+            background: rgba(255,255,255,0.15);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .voice-icon-card canvas {
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            max-width: 100%;
+        }
+
+        .voice-icon-card .size-label {
+            font-weight: 600;
+            color: white;
+            margin: 10px 0 5px;
+        }
+
+        .voice-icon-card .filename {
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.7);
+        }
+
+        .voice-icon-card .download-btn {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .voice-icon-card .download-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .instructions {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .instructions h3 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+
+        .instructions ol {
+            margin-left: 20px;
+            line-height: 1.8;
+        }
+
+        .instructions code {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Consolas', monospace;
+        }
+
+        .manifest-preview {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            overflow-x: auto;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .upload-area {
+                padding: 40px 20px;
+            }
+
+            .icons-grid {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Household6 PWA Icon Generator</h1>
+        <p class="subtitle">Generate all required PWA icons from a single high-resolution image</p>
+
+        <div class="upload-section">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">&#128247;</div>
+                <div class="upload-text">Drop your icon image here or click to browse</div>
+                <div class="upload-hint">Recommended: 512x512px or larger PNG with transparency</div>
+            </div>
+            <input type="file" id="fileInput" accept="image/*">
+        </div>
+
+        <div class="preview-section" id="previewSection">
+            <h2 class="section-title">Standard PWA Icons</h2>
+            <div class="preview-container">
+                <div class="original-preview">
+                    <img id="originalImage" alt="Original">
+                    <p>Original Image</p>
+                </div>
+            </div>
+            <div class="icons-grid" id="iconsGrid"></div>
+            <div class="download-all-section">
+                <button class="download-all-btn" id="downloadAllBtn">Download All Icons (ZIP)</button>
+            </div>
+        </div>
+
+        <div class="voice-section" id="voiceSection">
+            <h2 class="section-title">Voice Command Icons</h2>
+            <p style="margin-bottom: 20px; opacity: 0.9;">Special icons with microphone overlay for voice command feature</p>
+            <div class="voice-icons-grid" id="voiceIconsGrid"></div>
+        </div>
+
+        <div class="instructions">
+            <h3>How to Use Generated Icons</h3>
+            <ol>
+                <li>Upload a high-resolution icon image (512x512 or larger recommended)</li>
+                <li>Download individual icons or all at once using the ZIP button</li>
+                <li>Place all downloaded icons in your <code>/icons/</code> folder</li>
+                <li>Update your <code>manifest.json</code> with the icon definitions below</li>
+            </ol>
+
+            <div class="manifest-preview" id="manifestPreview">
+{
+  "icons": [
+    { "src": "/icons/icon-72x72.png", "sizes": "72x72", "type": "image/png" },
+    { "src": "/icons/icon-96x96.png", "sizes": "96x96", "type": "image/png" },
+    { "src": "/icons/icon-128x128.png", "sizes": "128x128", "type": "image/png" },
+    { "src": "/icons/icon-144x144.png", "sizes": "144x144", "type": "image/png" },
+    { "src": "/icons/icon-152x152.png", "sizes": "152x152", "type": "image/png" },
+    { "src": "/icons/icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-384x384.png", "sizes": "384x384", "type": "image/png" },
+    { "src": "/icons/icon-512x512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ICON_SIZES = [72, 96, 128, 144, 152, 192, 384, 512];
+        const VOICE_ICON_SIZES = [192, 512];
+
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const previewSection = document.getElementById('previewSection');
+        const voiceSection = document.getElementById('voiceSection');
+        const originalImage = document.getElementById('originalImage');
+        const iconsGrid = document.getElementById('iconsGrid');
+        const voiceIconsGrid = document.getElementById('voiceIconsGrid');
+        const downloadAllBtn = document.getElementById('downloadAllBtn');
+
+        let generatedIcons = [];
+        let generatedVoiceIcons = [];
+
+        // Drag and drop handlers
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                processImage(file);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                processImage(file);
+            }
+        });
+
+        function processImage(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    originalImage.src = e.target.result;
+                    generateIcons(img);
+                    generateVoiceIcons(img);
+                    previewSection.classList.add('visible');
+                    voiceSection.classList.add('visible');
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function generateIcons(img) {
+            iconsGrid.innerHTML = '';
+            generatedIcons = [];
+
+            ICON_SIZES.forEach(size => {
+                const canvas = document.createElement('canvas');
+                canvas.width = size;
+                canvas.height = size;
+                const ctx = canvas.getContext('2d');
+
+                // Draw with high quality
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                ctx.drawImage(img, 0, 0, size, size);
+
+                const filename = `icon-${size}x${size}.png`;
+                const dataUrl = canvas.toDataURL('image/png');
+
+                generatedIcons.push({ filename, dataUrl, size });
+
+                const card = createIconCard(canvas, size, filename, dataUrl);
+                iconsGrid.appendChild(card);
+            });
+        }
+
+        function generateVoiceIcons(img) {
+            voiceIconsGrid.innerHTML = '';
+            generatedVoiceIcons = [];
+
+            VOICE_ICON_SIZES.forEach(size => {
+                const canvas = document.createElement('canvas');
+                canvas.width = size;
+                canvas.height = size;
+                const ctx = canvas.getContext('2d');
+
+                // Draw base icon
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                ctx.drawImage(img, 0, 0, size, size);
+
+                // Add microphone overlay
+                drawMicrophoneOverlay(ctx, size);
+
+                const filename = `voice-icon-${size}x${size}.png`;
+                const dataUrl = canvas.toDataURL('image/png');
+
+                generatedVoiceIcons.push({ filename, dataUrl, size });
+
+                const card = createIconCard(canvas, size, filename, dataUrl, true);
+                voiceIconsGrid.appendChild(card);
+            });
+        }
+
+        function drawMicrophoneOverlay(ctx, size) {
+            const scale = size / 512;
+            const badgeSize = 180 * scale;
+            const badgeX = size - badgeSize - (20 * scale);
+            const badgeY = size - badgeSize - (20 * scale);
+
+            // Draw circular badge background
+            ctx.beginPath();
+            ctx.arc(badgeX + badgeSize/2, badgeY + badgeSize/2, badgeSize/2, 0, Math.PI * 2);
+            ctx.fillStyle = '#667eea';
+            ctx.fill();
+
+            // Draw white border
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 4 * scale;
+            ctx.stroke();
+
+            // Draw microphone icon
+            const micX = badgeX + badgeSize/2;
+            const micY = badgeY + badgeSize/2;
+            const micScale = scale * 0.5;
+
+            ctx.fillStyle = 'white';
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 8 * micScale;
+            ctx.lineCap = 'round';
+
+            // Microphone body
+            ctx.beginPath();
+            ctx.roundRect(micX - 25*micScale, micY - 60*micScale, 50*micScale, 80*micScale, 25*micScale);
+            ctx.fill();
+
+            // Microphone stand arc
+            ctx.beginPath();
+            ctx.arc(micX, micY + 10*micScale, 45*micScale, 0, Math.PI);
+            ctx.stroke();
+
+            // Microphone stand
+            ctx.beginPath();
+            ctx.moveTo(micX, micY + 55*micScale);
+            ctx.lineTo(micX, micY + 80*micScale);
+            ctx.stroke();
+
+            // Microphone base
+            ctx.beginPath();
+            ctx.moveTo(micX - 30*micScale, micY + 80*micScale);
+            ctx.lineTo(micX + 30*micScale, micY + 80*micScale);
+            ctx.stroke();
+        }
+
+        function createIconCard(canvas, size, filename, dataUrl, isVoice = false) {
+            const card = document.createElement('div');
+            card.className = isVoice ? 'voice-icon-card' : 'icon-card';
+
+            // Create a display canvas (scaled for UI)
+            const displayCanvas = document.createElement('canvas');
+            const displaySize = Math.min(size, 128);
+            displayCanvas.width = displaySize;
+            displayCanvas.height = displaySize;
+            const displayCtx = displayCanvas.getContext('2d');
+            displayCtx.drawImage(canvas, 0, 0, displaySize, displaySize);
+
+            card.innerHTML = `
+                <div class="size-label">${size}x${size}</div>
+                <div class="filename">${filename}</div>
+            `;
+            card.insertBefore(displayCanvas, card.firstChild);
+
+            const downloadBtn = document.createElement('a');
+            downloadBtn.className = 'download-btn';
+            downloadBtn.href = dataUrl;
+            downloadBtn.download = filename;
+            downloadBtn.textContent = 'Download';
+            card.appendChild(downloadBtn);
+
+            return card;
+        }
+
+        // Download all functionality (basic - individual downloads)
+        downloadAllBtn.addEventListener('click', async () => {
+            const allIcons = [...generatedIcons, ...generatedVoiceIcons];
+
+            // Simple sequential download
+            for (let i = 0; i < allIcons.length; i++) {
+                const icon = allIcons[i];
+                const link = document.createElement('a');
+                link.href = icon.dataUrl;
+                link.download = icon.filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                // Small delay between downloads
+                await new Promise(resolve => setTimeout(resolve, 200));
+            }
+        });
+    </script>
+</body>
+</html>

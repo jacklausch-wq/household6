@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#7D9B8C">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Household6">
+    <title>Household6</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Auth Screen -->
+        <div id="auth-screen" class="screen">
+            <div class="auth-container">
+                <div class="logo">
+                    <div class="logo-icon">6</div>
+                    <h1>Household6</h1>
+                    <p class="tagline">Your household command center</p>
+                </div>
+                <button id="google-signin-btn" class="btn btn-google">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    Sign in with Google
+                </button>
+            </div>
+        </div>
+
+        <!-- Household Setup Screen -->
+        <div id="household-screen" class="screen hidden">
+            <div class="household-container">
+                <h2>Welcome to Household6</h2>
+                <p>Create a new household or join an existing one</p>
+
+                <div class="household-options">
+                    <button id="create-household-btn" class="btn btn-primary">
+                        Create New Household
+                    </button>
+
+                    <div class="divider"><span>or</span></div>
+
+                    <div class="join-section">
+                        <input type="text" id="invite-code-input" placeholder="Enter invite code" maxlength="6">
+                        <button id="join-household-btn" class="btn btn-secondary">Join</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main App Screen -->
+        <div id="main-screen" class="screen hidden">
+            <!-- Header -->
+            <header class="app-header">
+                <h1 id="household-name">My Household</h1>
+                <button id="settings-btn" class="icon-btn" aria-label="Settings">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                        <path d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+                    </svg>
+                </button>
+            </header>
+
+            <!-- Quick Actions -->
+            <div class="quick-actions">
+                <button id="voice-btn" class="action-btn voice-btn" aria-label="Voice input">
+                    <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
+                        <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Text Input Bar -->
+            <div class="input-bar">
+                <input type="text" id="text-input" placeholder="Type or paste text here..." autocomplete="off">
+                <label id="upload-btn" class="upload-btn" aria-label="Upload document">
+                    <input type="file" id="file-input" accept=".pdf,.txt,.doc,.docx,image/*" hidden>
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                        <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11zm-3-7v4h-2v-4H9l4-4 4 4h-4z"/>
+                    </svg>
+                </label>
+            </div>
+
+            <!-- Tab Navigation -->
+            <nav class="tab-nav">
+                <button class="tab-btn active" data-tab="today">Today</button>
+                <button class="tab-btn" data-tab="tasks">Tasks</button>
+                <button class="tab-btn" data-tab="shopping">Shopping</button>
+                <button class="tab-btn" data-tab="calendar">Calendar</button>
+            </nav>
+
+            <!-- Tab Content -->
+            <main class="tab-content">
+                <!-- Today Tab -->
+                <div id="today-tab" class="tab-panel active">
+                    <section class="today-section">
+                        <h3>Today's Schedule</h3>
+                        <div id="today-events" class="event-list">
+                            <p class="empty-state">No events today</p>
+                        </div>
+                    </section>
+                    <section class="today-section">
+                        <h3>Pending Tasks</h3>
+                        <div id="today-tasks" class="task-list">
+                            <p class="empty-state">No pending tasks</p>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Tasks Tab -->
+                <div id="tasks-tab" class="tab-panel hidden">
+                    <div class="tasks-header">
+                        <h3>All Tasks</h3>
+                        <button id="add-task-btn" class="btn btn-small">+ Add Task</button>
+                    </div>
+                    <div id="all-tasks" class="task-list">
+                        <p class="empty-state">No tasks yet</p>
+                    </div>
+                </div>
+
+                <!-- Shopping Tab -->
+                <div id="shopping-tab" class="tab-panel hidden">
+                    <div class="shopping-header">
+                        <h3>Shopping List</h3>
+                        <button id="clear-checked-btn" class="btn btn-small btn-secondary">Clear Checked</button>
+                    </div>
+                    <div id="shopping-list" class="shopping-list">
+                        <p class="empty-state">No items on your list</p>
+                    </div>
+                    <div id="checked-items" class="checked-items hidden">
+                        <h4 class="section-label checked-label">Checked Off</h4>
+                        <div id="checked-items-list"></div>
+                    </div>
+                </div>
+
+                <!-- Calendar Tab -->
+                <div id="calendar-tab" class="tab-panel hidden">
+                    <div class="calendar-header">
+                        <button id="prev-month" class="icon-btn">&lt;</button>
+                        <h3 id="calendar-month">January 2026</h3>
+                        <button id="next-month" class="icon-btn">&gt;</button>
+                    </div>
+                    <div id="calendar-grid" class="calendar-grid">
+                        <!-- Calendar will be rendered here -->
+                    </div>
+                    <div id="selected-day-section" class="selected-day-section hidden">
+                        <div class="selected-day-header">
+                            <h4 id="selected-day-title">Events</h4>
+                            <span id="selected-day-date"></span>
+                        </div>
+                        <div id="selected-day-events" class="day-events-list"></div>
+                    </div>
+                    <div class="upcoming-events-section">
+                        <h4 class="section-label">Upcoming Events</h4>
+                        <div id="upcoming-events" class="upcoming-events-list">
+                            <p class="empty-state">No upcoming events</p>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Voice Input Modal -->
+        <div id="voice-modal" class="modal hidden">
+            <div class="modal-content voice-modal-content">
+                <button id="voice-close-btn" class="close-btn">&times;</button>
+                <div class="voice-status">
+                    <div id="voice-indicator" class="voice-indicator">
+                        <div class="pulse-ring"></div>
+                        <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor">
+                            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/>
+                        </svg>
+                    </div>
+                    <p id="voice-status-text">Listening...</p>
+                </div>
+                <div id="voice-transcript" class="voice-transcript"></div>
+                <div id="voice-result" class="voice-result hidden">
+                    <div id="parsed-result"></div>
+                    <div class="voice-actions">
+                        <button id="voice-confirm-btn" class="btn btn-primary">Confirm</button>
+                        <button id="voice-retry-btn" class="btn btn-secondary">Try Again</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Task Modal -->
+        <div id="task-modal" class="modal hidden">
+            <div class="modal-content">
+                <button class="close-btn" data-close="task-modal">&times;</button>
+                <h2 id="task-modal-title">Add Task</h2>
+                <form id="task-form">
+                    <div class="form-group">
+                        <label for="task-title">Task</label>
+                        <input type="text" id="task-title" required placeholder="What needs to be done?">
+                    </div>
+                    <div class="form-group">
+                        <label for="task-assignee">Assign to</label>
+                        <select id="task-assignee">
+                            <option value="">Anyone</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="task-recurring">
+                            Recurring task
+                        </label>
+                    </div>
+                    <div id="recurring-options" class="form-group hidden">
+                        <label for="task-frequency">Repeat</label>
+                        <select id="task-frequency">
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-full">Save Task</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settings-modal" class="modal hidden">
+            <div class="modal-content">
+                <button class="close-btn" data-close="settings-modal">&times;</button>
+                <h2>Settings</h2>
+
+                <div class="settings-section">
+                    <h3>Household</h3>
+                    <div class="setting-item">
+                        <span>Invite Code</span>
+                        <div class="invite-code-display">
+                            <code id="current-invite-code">------</code>
+                            <button id="copy-invite-code" class="btn btn-small">Copy</button>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <span>Members</span>
+                        <div id="household-members" class="members-list"></div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Calendar</h3>
+                    <div id="calendar-not-connected" class="setting-item">
+                        <p style="margin-bottom: 12px; color: var(--text-light);">Connect your Google Calendar to sync events</p>
+                        <button id="connect-calendar-btn" class="btn btn-primary btn-full">Connect Google Calendar</button>
+                    </div>
+                    <div id="calendar-connected" class="setting-item hidden">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                            <span style="color: var(--success);">&#10003;</span>
+                            <span>Calendar connected</span>
+                        </div>
+                        <label for="calendar-select">Sync with calendar</label>
+                        <select id="calendar-select">
+                            <option value="">Select a calendar...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Appearance</h3>
+                    <div class="setting-item">
+                        <label for="theme-select">Theme</label>
+                        <select id="theme-select">
+                            <option value="system">System</option>
+                            <option value="light">Light</option>
+                            <option value="dark">Dark</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Notifications</h3>
+                    <div class="setting-item">
+                        <label for="morning-report-time">Morning report time</label>
+                        <input type="time" id="morning-report-time" value="07:00">
+                    </div>
+                    <div class="setting-item">
+                        <label for="buffer-time">Reminder buffer (minutes before leaving)</label>
+                        <input type="number" id="buffer-time" value="20" min="0" max="120">
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Locations</h3>
+                    <div class="setting-item">
+                        <label for="home-address">Home address</label>
+                        <input type="text" id="home-address" placeholder="Enter your home address">
+                    </div>
+                    <div class="setting-item">
+                        <span>Saved Locations</span>
+                        <button id="add-location-btn" class="btn btn-small">+ Add</button>
+                    </div>
+                    <div id="saved-locations" class="locations-list"></div>
+                </div>
+
+                <div class="settings-section">
+                    <button id="sign-out-btn" class="btn btn-danger btn-full">Sign Out</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Location Modal -->
+        <div id="location-modal" class="modal hidden">
+            <div class="modal-content">
+                <button class="close-btn" data-close="location-modal">&times;</button>
+                <h2>Add Saved Location</h2>
+                <form id="location-form">
+                    <div class="form-group">
+                        <label for="location-name">Name (e.g., "Kids doctor")</label>
+                        <input type="text" id="location-name" required placeholder="Location nickname">
+                    </div>
+                    <div class="form-group">
+                        <label for="location-address">Address</label>
+                        <input type="text" id="location-address" required placeholder="Full address">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-full">Save Location</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Document Preview Modal -->
+        <div id="document-modal" class="modal hidden">
+            <div class="modal-content document-modal-content">
+                <button class="close-btn" data-close="document-modal">&times;</button>
+                <h2 id="document-modal-title">Processing Document...</h2>
+                <div id="document-loading" class="document-loading">
+                    <div class="spinner"></div>
+                    <p>Extracting events and tasks...</p>
+                </div>
+                <div id="document-preview" class="document-preview hidden">
+                    <p class="preview-summary" id="preview-summary"></p>
+                    <div id="preview-items" class="preview-items"></div>
+                    <div class="document-actions">
+                        <button id="document-confirm-btn" class="btn btn-primary">Create All</button>
+                        <button id="document-cancel-btn" class="btn btn-secondary">Cancel</button>
+                    </div>
+                </div>
+                <div id="document-error" class="document-error hidden">
+                    <p id="document-error-msg"></p>
+                    <button id="document-retry-btn" class="btn btn-secondary">Try Again</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <!-- PDF.js for document extraction -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+    <!-- App Scripts -->
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/household.js"></script>
+    <script src="js/tasks.js"></script>
+    <script src="js/shopping.js"></script>
+    <script src="js/calendar.js"></script>
+    <script src="js/gemini.js"></script>
+    <script src="js/voice.js"></script>
+    <script src="js/locations.js"></script>
+    <script src="js/reminders.js"></script>
+    <script src="js/notifications.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+{
+    "name": "Household6",
+    "short_name": "Household6",
+    "description": "Your household command center - manage tasks, events, and schedules together",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#FBF9F7",
+    "theme_color": "#C4A07A",
+    "orientation": "portrait",
+    "icons": [
+        {
+            "src": "icons/icon-72.png",
+            "sizes": "72x72",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/icon-96.png",
+            "sizes": "96x96",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/icon-128.png",
+            "sizes": "128x128",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/icon-144.png",
+            "sizes": "144x144",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/icon-152.png",
+            "sizes": "152x152",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "icons/icon-384.png",
+            "sizes": "384x384",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "Voice Input",
+            "short_name": "Voice",
+            "description": "Quick voice command",
+            "url": "/pages/voice.html",
+            "icons": [
+                {
+                    "src": "icons/voice-icon-192.png",
+                    "sizes": "192x192",
+                    "type": "image/png"
+                }
+            ]
+        }
+    ],
+    "categories": ["productivity", "utilities"],
+    "lang": "en-US"
+}
