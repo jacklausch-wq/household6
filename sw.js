@@ -1,5 +1,5 @@
 // Household6 Service Worker
-const CACHE_NAME = 'household6-v8'; // Bumped version for GitHub Pages path fix
+const CACHE_NAME = 'household6-v9'; // Bumped version for iOS PWA auth fix
 const STATIC_ASSETS = [
     './',
     './index.html',

@@ -10,6 +10,13 @@ const Auth = {
         // 'spouse@gmail.com',
     ],
 
+    // Detect if running as iOS standalone PWA
+    isIOSPWA() {
+        return window.navigator.standalone === true ||
+               (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches &&
+                /iPhone|iPad|iPod/.test(navigator.userAgent));
+    },
+
     // Check if email is authorized
     isEmailAllowed(email) {
         // If no allowlist configured, allow everyone
@@ -20,6 +27,26 @@ const Auth = {
     // Initialize auth state listener
     init() {
         return new Promise((resolve) => {
+            // Handle redirect result first (for iOS PWA)
+            auth.getRedirectResult().then((result) => {
+                if (result && result.user) {
+                    // Check if email is allowed
+                    if (!this.isEmailAllowed(result.user.email)) {
+                        auth.signOut();
+                        return;
+                    }
+                    // Get the OAuth access token from redirect result
+                    const credential = firebase.auth.GoogleAuthProvider.credentialFromResult(result);
+                    if (credential && credential.accessToken) {
+                        this.accessToken = credential.accessToken;
+                        sessionStorage.setItem('googleAccessToken', this.accessToken);
+                    }
+                }
+            }).catch((error) => {
+                // Redirect error - will be handled by onAuthStateChanged
+                console.error('Redirect result error:', error);
+            });
+
             auth.onAuthStateChanged(async (user) => {
                 if (user) {
                     // Check if returning user is still allowed
@@ -58,6 +85,14 @@ const Auth = {
                 access_type: 'offline'
             });
 
+            // Use redirect for iOS PWA (popups don't work in standalone mode)
+            if (this.isIOSPWA()) {
+                await auth.signInWithRedirect(provider);
+                // This won't return - page will redirect
+                return null;
+            }
+
+            // Use popup for desktop/browser
             const result = await auth.signInWithPopup(provider);
 
             // Check if email is allowed
@@ -71,18 +106,23 @@ const Auth = {
             if (credential && credential.accessToken) {
                 this.accessToken = credential.accessToken;
                 sessionStorage.setItem('googleAccessToken', this.accessToken);
-                // Access token obtained
             } else if (result.credential && result.credential.accessToken) {
                 // Fallback for older Firebase versions
                 this.accessToken = result.credential.accessToken;
                 sessionStorage.setItem('googleAccessToken', this.accessToken);
-                // Access token obtained (fallback)
-            } else {
-                // No access token in credential - calendar sync may not work
             }
             return result.user;
         } catch (error) {
-            // Sign in error handled by throw
+            // If popup fails, try redirect as fallback
+            if (error.code === 'auth/popup-blocked' ||
+                error.code === 'auth/popup-closed-by-user' ||
+                error.code === 'auth/internal-error') {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                provider.addScope('https://www.googleapis.com/auth/calendar');
+                provider.addScope('https://www.googleapis.com/auth/calendar.events');
+                await auth.signInWithRedirect(provider);
+                return null;
+            }
             throw error;
         }
     },
