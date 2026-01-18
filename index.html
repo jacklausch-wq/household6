@@ -397,16 +397,22 @@
 
                 <div class="settings-section">
                     <h3>Calendar</h3>
+                    <div id="household-calendar-info" class="setting-item hidden">
+                        <p class="setting-label">Household Calendar</p>
+                        <p id="household-calendar-name" style="font-weight: 500; margin-bottom: 8px;">Not set</p>
+                        <p id="household-calendar-status" style="font-size: 13px; color: var(--text-light);"></p>
+                    </div>
                     <div id="calendar-not-connected" class="setting-item">
-                        <p style="margin-bottom: 12px; color: var(--text-light);">Connect your Google Calendar to sync events</p>
+                        <p style="margin-bottom: 12px; color: var(--text-light);">Connect your Google account to access the household calendar</p>
                         <button id="connect-calendar-btn" class="btn btn-primary btn-full">Connect Google Calendar</button>
                     </div>
                     <div id="calendar-connected" class="setting-item hidden">
                         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
                             <span style="color: var(--success);">&#10003;</span>
-                            <span>Calendar connected</span>
+                            <span>Google account connected</span>
                         </div>
-                        <label for="calendar-select">Sync with calendar</label>
+                        <label for="calendar-select">Select household calendar</label>
+                        <p style="font-size: 12px; color: var(--text-light); margin-bottom: 8px;">This calendar will be used by all household members</p>
                         <select id="calendar-select">
                             <option value="">Select a calendar...</option>
                         </select>

@@ -1,5 +1,5 @@
 // Household6 Service Worker
-const CACHE_NAME = 'household6-v26'; // Use localStorage for token persistence across app restarts
+const CACHE_NAME = 'household6-v27'; // Household-level calendar with auto-select for members
 const STATIC_ASSETS = [
     './',
     './index.html',

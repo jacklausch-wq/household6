@@ -912,21 +912,64 @@ const App = {
 
         // Check if calendar is connected (we have an access token)
         const hasCalendarAccess = !!Auth.accessToken;
+        const householdCalendarId = Household.currentHousehold?.selectedCalendarId;
+
         document.getElementById('calendar-not-connected')?.classList.toggle('hidden', hasCalendarAccess);
         document.getElementById('calendar-connected')?.classList.toggle('hidden', !hasCalendarAccess);
+
+        // Show household calendar info if one is set
+        const calendarInfoEl = document.getElementById('household-calendar-info');
+        const calendarNameEl = document.getElementById('household-calendar-name');
+        const calendarStatusEl = document.getElementById('household-calendar-status');
 
         // Load calendars if connected
         if (hasCalendarAccess) {
             const calendarSelect = document.getElementById('calendar-select');
             const calendars = await Calendar.getCalendarList();
             calendarSelect.innerHTML = '<option value="">Select a calendar...</option>';
+
+            let householdCalendarFound = false;
+            let householdCalendarName = null;
+
             calendars.forEach(cal => {
                 const option = document.createElement('option');
                 option.value = cal.id;
                 option.textContent = cal.summary;
                 option.selected = cal.id === Calendar.selectedCalendarId;
                 calendarSelect.appendChild(option);
+
+                // Check if this user has access to the household calendar
+                if (cal.id === householdCalendarId) {
+                    householdCalendarFound = true;
+                    householdCalendarName = cal.summary;
+                }
             });
+
+            // Show household calendar status
+            if (householdCalendarId) {
+                calendarInfoEl?.classList.remove('hidden');
+                if (householdCalendarFound) {
+                    calendarNameEl.textContent = householdCalendarName;
+                    calendarStatusEl.innerHTML = '<span style="color: var(--success);">&#10003;</span> You have access to this calendar';
+                    // Auto-select if not already selected
+                    if (!Calendar.selectedCalendarId) {
+                        calendarSelect.value = householdCalendarId;
+                        await Calendar.setSelectedCalendar(householdCalendarId);
+                    }
+                } else {
+                    calendarNameEl.textContent = 'Shared calendar (ID: ' + householdCalendarId.substring(0, 20) + '...)';
+                    calendarStatusEl.innerHTML = '<span style="color: var(--warning);">!</span> Make sure this calendar is shared with your Google account';
+                }
+            } else {
+                calendarInfoEl?.classList.add('hidden');
+            }
+        } else if (householdCalendarId) {
+            // Not connected but household has a calendar set
+            calendarInfoEl?.classList.remove('hidden');
+            calendarNameEl.textContent = 'Calendar configured';
+            calendarStatusEl.textContent = 'Connect your Google account to access it';
+        } else {
+            calendarInfoEl?.classList.add('hidden');
         }
 
         // Load user settings
@@ -956,13 +999,49 @@ const App = {
                 // Load calendars
                 const calendars = await Calendar.getCalendarList();
                 const calendarSelect = document.getElementById('calendar-select');
+                const householdCalendarId = Household.currentHousehold?.selectedCalendarId;
+
                 calendarSelect.innerHTML = '<option value="">Select a calendar...</option>';
+
+                let householdCalendarFound = false;
+                let householdCalendarName = null;
+
                 calendars.forEach(cal => {
                     const option = document.createElement('option');
                     option.value = cal.id;
                     option.textContent = cal.summary;
                     calendarSelect.appendChild(option);
+
+                    if (cal.id === householdCalendarId) {
+                        householdCalendarFound = true;
+                        householdCalendarName = cal.summary;
+                    }
                 });
+
+                // Auto-select household calendar if available
+                if (householdCalendarId && householdCalendarFound) {
+                    calendarSelect.value = householdCalendarId;
+                    await Calendar.setSelectedCalendar(householdCalendarId);
+
+                    // Update the household calendar info display
+                    const calendarInfoEl = document.getElementById('household-calendar-info');
+                    const calendarNameEl = document.getElementById('household-calendar-name');
+                    const calendarStatusEl = document.getElementById('household-calendar-status');
+                    calendarInfoEl?.classList.remove('hidden');
+                    calendarNameEl.textContent = householdCalendarName;
+                    calendarStatusEl.innerHTML = '<span style="color: var(--success);">&#10003;</span> You have access to this calendar';
+
+                    this.showToast('Connected to household calendar: ' + householdCalendarName);
+                    await this.loadTodayData();
+                } else if (householdCalendarId) {
+                    // Household has a calendar but user doesn't have access
+                    const calendarInfoEl = document.getElementById('household-calendar-info');
+                    const calendarNameEl = document.getElementById('household-calendar-name');
+                    const calendarStatusEl = document.getElementById('household-calendar-status');
+                    calendarInfoEl?.classList.remove('hidden');
+                    calendarNameEl.textContent = 'Shared calendar';
+                    calendarStatusEl.innerHTML = '<span style="color: var(--warning);">!</span> Ask a household member to share this calendar with you';
+                }
             } else {
                 this.showToast('Could not get calendar access.');
             }
