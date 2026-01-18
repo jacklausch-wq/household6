@@ -1,5 +1,5 @@
 // Household6 Service Worker
-const CACHE_NAME = 'household6-v10'; // Fix iOS auth redirect loop
+const CACHE_NAME = 'household6-v12'; // GitHub Pages auth with custom authDomain
 const STATIC_ASSETS = [
     './',
     './index.html',
@@ -25,7 +25,8 @@ const STATIC_ASSETS = [
     './js/meal-planner.js',
     './js/agenda.js',
     './manifest.json',
-    './pages/voice.html'
+    './pages/voice.html',
+    './__/auth/handler'
 ];
 
 // Install event - cache static assets

@@ -403,6 +403,19 @@ body {
     text-align: center;
 }
 
+.install-note {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+    text-align: center;
+    line-height: 1.4;
+}
+
+.install-note a {
+    color: var(--primary);
+    font-weight: 500;
+}
+
 .install-details {
     margin-bottom: 8px;
     background: var(--bg-subtle);

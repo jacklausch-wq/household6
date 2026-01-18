@@ -1,7 +1,8 @@
 // Firebase Configuration
+// Using GitHub Pages domain as authDomain for proper redirect auth on iOS PWA
 const firebaseConfig = {
     apiKey: "AIzaSyAxzXoHTqB0O0OBa_P14_YJGdGcWa6BCL4",
-    authDomain: "household6-3dc14.firebaseapp.com",
+    authDomain: "jacklausch-wq.github.io",
     projectId: "household6-3dc14",
     storageBucket: "household6-3dc14.firebasestorage.app",
     messagingSenderId: "45342878370",

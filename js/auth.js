@@ -12,11 +12,10 @@ const Auth = {
         // 'spouse@gmail.com',
     ],
 
-    // Detect if running as iOS standalone PWA
-    isIOSPWA() {
+    // Detect if running as standalone PWA (iOS or Android)
+    isStandalonePWA() {
         return window.navigator.standalone === true ||
-               (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches &&
-                /iPhone|iPad|iPod/.test(navigator.userAgent));
+               (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
     },
 
     // Check if email is authorized
@@ -38,7 +37,7 @@ const Auth = {
                 }
             };
 
-            // Handle redirect result first (for iOS PWA)
+            // Handle redirect result first (for PWA auth flow)
             auth.getRedirectResult().then((result) => {
                 if (result && result.user) {
                     // Successfully returned from redirect
@@ -111,11 +110,10 @@ const Auth = {
                 access_type: 'offline'
             });
 
-            // Use redirect for iOS PWA (popups don't work in standalone mode)
-            if (this.isIOSPWA()) {
+            // For standalone PWA (iOS/Android), use redirect (popups don't work)
+            if (this.isStandalonePWA()) {
                 sessionStorage.setItem('auth_redirecting', 'true');
                 await auth.signInWithRedirect(provider);
-                // This won't return - page will redirect
                 return null;
             }
 

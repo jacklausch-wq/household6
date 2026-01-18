@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Firebase Auth Handler</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+</head>
+<body>
+  <script>
+    // Initialize Firebase with your config
+    const firebaseConfig = {
+      apiKey: "AIzaSyAxzXoHTqB0O0OBa_P14_YJGdGcWa6BCL4",
+      authDomain: "jacklausch-wq.github.io",
+      projectId: "household6-3dc14",
+      storageBucket: "household6-3dc14.firebasestorage.app",
+      messagingSenderId: "45342878370",
+      appId: "1:45342878370:web:8f1e714f5e0984f55d45fb"
+    };
+    firebase.initializeApp(firebaseConfig);
+
+    // This page handles the OAuth redirect
+    // Firebase will automatically process the auth result
+  </script>
+</body>
+</html>
