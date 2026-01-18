@@ -1,5 +1,5 @@
 // Household6 Service Worker
-const CACHE_NAME = 'household6-v24'; // Add flag to prevent auth loop during calendar connect
+const CACHE_NAME = 'household6-v25'; // Show calendar disconnected state with reconnect button
 const STATIC_ASSETS = [
     './',
     './index.html',

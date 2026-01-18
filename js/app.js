@@ -110,15 +110,70 @@ const App = {
 
     // Load today's data
     async loadTodayData() {
-        try {
-            if (Auth.accessToken && Calendar.selectedCalendarId) {
+        const eventsContainer = document.getElementById('today-events');
+
+        // Check if calendar needs reconnection
+        if (!Auth.accessToken) {
+            if (eventsContainer) {
+                if (Auth.calendarConnected || Calendar.selectedCalendarId) {
+                    // Was connected before but token expired
+                    eventsContainer.innerHTML = `
+                        <div class="calendar-disconnected">
+                            <p>Calendar disconnected</p>
+                            <button class="btn btn-small btn-secondary" onclick="App.promptCalendarReconnect()">
+                                Reconnect
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    // Never connected
+                    eventsContainer.innerHTML = `
+                        <div class="calendar-disconnected">
+                            <p>Calendar not connected</p>
+                            <button class="btn btn-small btn-secondary" onclick="App.openSettingsModal()">
+                                Connect in Settings
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+        } else if (Calendar.selectedCalendarId) {
+            try {
                 const events = await Calendar.getTodayEvents();
                 this.renderTodayEvents(events);
+            } catch (e) {
+                console.log('Could not load calendar events:', e.message);
+                if (eventsContainer) {
+                    eventsContainer.innerHTML = `
+                        <div class="calendar-disconnected">
+                            <p>Calendar error</p>
+                            <button class="btn btn-small btn-secondary" onclick="App.promptCalendarReconnect()">
+                                Reconnect
+                            </button>
+                        </div>
+                    `;
+                }
             }
-        } catch (e) {
-            console.log('Could not load calendar events:', e.message);
+        } else if (eventsContainer) {
+            eventsContainer.innerHTML = '<p class="empty-state">No calendar selected</p>';
         }
+
         this.renderTodayTasks();
+    },
+
+    // Prompt user to reconnect calendar
+    async promptCalendarReconnect() {
+        try {
+            this.showToast('Connecting to Google Calendar...');
+            const token = await Auth.connectGoogleCalendar();
+            if (token) {
+                this.showToast('Calendar reconnected!');
+                this.updateCalendarUI(true);
+                await this.loadTodayData();
+            }
+        } catch (error) {
+            this.showToast('Error: ' + error.message);
+        }
     },
 
     // Render today's tasks with overdue section
