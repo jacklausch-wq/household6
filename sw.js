@@ -1,5 +1,5 @@
 // Household6 Service Worker
-const CACHE_NAME = 'household6-v6'; // Bumped version for security fixes
+const CACHE_NAME = 'household6-v7'; // Bumped version for install instructions
 const STATIC_ASSETS = [
     '/',
     '/index.html',
