@@ -1,5 +1,5 @@
 // Household6 Service Worker
-const CACHE_NAME = 'household6-v12'; // GitHub Pages auth with custom authDomain
+const CACHE_NAME = 'household6-v13'; // Fix auth handler extension
 const STATIC_ASSETS = [
     './',
     './index.html',
@@ -25,8 +25,7 @@ const STATIC_ASSETS = [
     './js/meal-planner.js',
     './js/agenda.js',
     './manifest.json',
-    './pages/voice.html',
-    './__/auth/handler'
+    './pages/voice.html'
 ];
 
 // Install event - cache static assets
