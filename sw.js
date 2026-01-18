@@ -1,5 +1,5 @@
 // Household6 Service Worker
-const CACHE_NAME = 'household6-v17'; // Email/password auth (no more Google OAuth for login)
+const CACHE_NAME = 'household6-v18'; // Fix calendar connection for email/password accounts
 const STATIC_ASSETS = [
     './',
     './index.html',
