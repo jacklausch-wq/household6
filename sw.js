@@ -1,5 +1,5 @@
 // Household6 Service Worker
-const CACHE_NAME = 'household6-v15'; // Fix iOS PWA auth - use Firebase authDomain, Calendar optional
+const CACHE_NAME = 'household6-v16'; // Add calendar onboarding prompt
 const STATIC_ASSETS = [
     './',
     './index.html',

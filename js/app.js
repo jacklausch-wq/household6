@@ -196,6 +196,7 @@ const App = {
         document.getElementById('household-created-continue')?.addEventListener('click', () => this.closeHouseholdCreatedModal());
         document.getElementById('copy-new-invite-code')?.addEventListener('click', () => this.copyNewInviteCode());
         document.getElementById('share-invite-code')?.addEventListener('click', () => this.shareInviteCode());
+        document.getElementById('connect-calendar-onboarding')?.addEventListener('click', () => this.handleConnectCalendarOnboarding());
 
         // Navigation
         document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -402,6 +403,39 @@ const App = {
         const modal = document.getElementById('household-created-modal');
         if (modal) {
             modal.classList.add('hidden');
+        }
+    },
+
+    // Handle calendar connection from onboarding modal
+    async handleConnectCalendarOnboarding() {
+        const btn = document.getElementById('connect-calendar-onboarding');
+        const originalText = btn?.innerHTML;
+
+        try {
+            if (btn) {
+                btn.innerHTML = 'Connecting...';
+                btn.disabled = true;
+            }
+
+            const accessToken = await Auth.refreshAccessToken();
+
+            if (accessToken) {
+                this.showToast('Calendar connected!');
+                // Update button to show success
+                if (btn) {
+                    btn.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" style="margin-right: 8px;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Connected!';
+                    btn.classList.remove('btn-secondary');
+                    btn.classList.add('btn-success');
+                }
+                // Load calendar data
+                await this.loadTodayData();
+            }
+        } catch (error) {
+            this.showToast('Could not connect calendar. Try again in Settings.');
+            if (btn) {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
         }
     },
 
