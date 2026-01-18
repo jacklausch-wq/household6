@@ -1,5 +1,5 @@
 // Household6 Service Worker
-const CACHE_NAME = 'household6-v22'; // Fix SW path for GitHub Pages + add favicon
+const CACHE_NAME = 'household6-v23'; // Simplify calendar connect to single signInWithPopup
 const STATIC_ASSETS = [
     './',
     './index.html',
