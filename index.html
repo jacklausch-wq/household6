@@ -872,6 +872,33 @@
             </div>
         </div>
 
+        <!-- Household Joined Modal -->
+        <div id="household-joined-modal" class="modal hidden">
+            <div class="modal-content household-created-content">
+                <div class="success-icon">
+                    <svg viewBox="0 0 24 24" width="64" height="64" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                </div>
+                <h2>Welcome to the Household!</h2>
+                <p class="modal-description">You've joined <strong id="joined-household-name">the household</strong>. Connect your Google Calendar to see shared events.</p>
+
+                <div class="calendar-connect-section" style="margin-top: 24px;">
+                    <h3>Connect Your Calendar</h3>
+                    <p class="modal-description" id="joined-calendar-info"></p>
+                    <button id="connect-calendar-join" class="btn btn-secondary btn-full">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" style="margin-right: 8px;">
+                            <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z"/>
+                        </svg>
+                        Connect Google Calendar
+                    </button>
+                    <p class="skip-note">You can also do this later in Settings.</p>
+                </div>
+
+                <button id="household-joined-continue" class="btn btn-primary btn-full">Continue to App</button>
+            </div>
+        </div>
+
         <!-- Household Created Modal -->
         <div id="household-created-modal" class="modal hidden">
             <div class="modal-content household-created-content">

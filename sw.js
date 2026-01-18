@@ -1,5 +1,5 @@
 // Household6 Service Worker
-const CACHE_NAME = 'household6-v27'; // Household-level calendar with auto-select for members
+const CACHE_NAME = 'household6-v28'; // Prompt to connect calendar when joining household
 const STATIC_ASSETS = [
     './',
     './index.html',

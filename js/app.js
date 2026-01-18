@@ -280,6 +280,10 @@ const App = {
         document.getElementById('share-invite-code')?.addEventListener('click', () => this.shareInviteCode());
         document.getElementById('connect-calendar-onboarding')?.addEventListener('click', () => this.handleConnectCalendarOnboarding());
 
+        // Household joined modal
+        document.getElementById('household-joined-continue')?.addEventListener('click', () => this.closeHouseholdJoinedModal());
+        document.getElementById('connect-calendar-join')?.addEventListener('click', () => this.handleConnectCalendarJoin());
+
         // Navigation
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', (e) => this.switchTab(e.target.dataset.tab));
@@ -666,9 +670,71 @@ const App = {
             await Household.join(code);
             await this.loadHousehold();
             this.showScreen('main');
-            this.showToast('Joined household!');
+
+            // Show the joined modal with calendar prompt
+            this.showHouseholdJoinedModal();
         } catch (error) {
             this.showToast(error.message);
+        }
+    },
+
+    showHouseholdJoinedModal() {
+        const modal = document.getElementById('household-joined-modal');
+        const householdName = document.getElementById('joined-household-name');
+        const calendarInfo = document.getElementById('joined-calendar-info');
+
+        // Set household name
+        householdName.textContent = Household.currentHousehold?.name || 'the household';
+
+        // Check if household has a calendar configured
+        if (Household.currentHousehold?.selectedCalendarId) {
+            calendarInfo.textContent = 'This household has a shared calendar. Connect your Google account to sync events.';
+        } else {
+            calendarInfo.textContent = 'Sync your Google Calendar to see and create shared events.';
+        }
+
+        modal.classList.remove('hidden');
+    },
+
+    closeHouseholdJoinedModal() {
+        const modal = document.getElementById('household-joined-modal');
+        modal.classList.add('hidden');
+    },
+
+    async handleConnectCalendarJoin() {
+        const btn = document.getElementById('connect-calendar-join');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = 'Connecting...';
+        btn.disabled = true;
+
+        try {
+            const accessToken = await Auth.connectGoogleCalendar();
+
+            if (accessToken) {
+                // Check if household has a calendar and if user has access
+                const householdCalendarId = Household.currentHousehold?.selectedCalendarId;
+                if (householdCalendarId) {
+                    const calendars = await Calendar.getCalendarList();
+                    const hasAccess = calendars.some(cal => cal.id === householdCalendarId);
+
+                    if (hasAccess) {
+                        await Calendar.setSelectedCalendar(householdCalendarId);
+                        btn.innerHTML = '<span style="color: var(--success);">&#10003;</span> Connected!';
+                        this.showToast('Connected to household calendar!');
+                        await this.loadTodayData();
+                    } else {
+                        btn.innerHTML = '<span style="color: var(--warning);">!</span> Calendar not shared with you';
+                        this.showToast('Ask a household member to share the calendar with your Google account');
+                    }
+                } else {
+                    btn.innerHTML = '<span style="color: var(--success);">&#10003;</span> Connected!';
+                    this.showToast('Calendar connected! Select a calendar in Settings.');
+                }
+            }
+        } catch (error) {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            this.showToast('Error: ' + error.message);
         }
     },
 
