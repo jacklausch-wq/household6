@@ -78,8 +78,15 @@ const App = {
         // Initialize week start for planner
         this.currentWeekStart = MealPlanner.getWeekStart();
 
-        // Load calendar (gracefully handle missing token)
+        // Load calendar
         Calendar.loadSelectedCalendar();
+
+        // If Google Calendar was previously connected, ensure we have access
+        if (Auth.calendarConnected) {
+            await this.ensureCalendarAccess();
+        }
+
+        // Load calendar data if we have access
         if (Calendar.selectedCalendarId && Auth.accessToken) {
             try {
                 await this.loadTodayData();
@@ -184,9 +191,29 @@ const App = {
 
     // Set up all event listeners
     setupEventListeners() {
-        // Auth
-        document.getElementById('google-signin-btn')?.addEventListener('click', () => this.handleSignIn());
+        // Auth - Email/Password forms
+        document.getElementById('signin-form')?.addEventListener('submit', (e) => this.handleSignIn(e));
+        document.getElementById('signup-form')?.addEventListener('submit', (e) => this.handleSignUp(e));
+        document.getElementById('forgot-password-form')?.addEventListener('submit', (e) => this.handleForgotPassword(e));
         document.getElementById('sign-out-btn')?.addEventListener('click', () => this.handleSignOut());
+
+        // Auth form switching
+        document.getElementById('show-signup')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.showAuthForm('signup');
+        });
+        document.getElementById('show-signin')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.showAuthForm('signin');
+        });
+        document.getElementById('show-forgot-password')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.showAuthForm('forgot');
+        });
+        document.getElementById('back-to-signin')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.showAuthForm('signin');
+        });
 
         // Household
         document.getElementById('create-household-btn')?.addEventListener('click', () => this.handleCreateHousehold());
@@ -350,12 +377,102 @@ const App = {
     },
 
     // Auth handlers
-    async handleSignIn() {
+    // Show specific auth form (signin, signup, forgot)
+    showAuthForm(form) {
+        document.getElementById('signin-form-container')?.classList.add('hidden');
+        document.getElementById('signup-form-container')?.classList.add('hidden');
+        document.getElementById('forgot-password-container')?.classList.add('hidden');
+
+        if (form === 'signin') {
+            document.getElementById('signin-form-container')?.classList.remove('hidden');
+        } else if (form === 'signup') {
+            document.getElementById('signup-form-container')?.classList.remove('hidden');
+        } else if (form === 'forgot') {
+            document.getElementById('forgot-password-container')?.classList.remove('hidden');
+        }
+    },
+
+    async handleSignIn(e) {
+        e.preventDefault();
+
+        const email = document.getElementById('signin-email')?.value.trim();
+        const password = document.getElementById('signin-password')?.value;
+        const btn = document.getElementById('signin-btn');
+
+        if (!email || !password) {
+            this.showToast('Please enter email and password');
+            return;
+        }
+
         try {
-            await Auth.signIn();
+            btn.disabled = true;
+            btn.textContent = 'Signing in...';
+
+            await Auth.signIn(email, password);
             await this.handleSignedIn();
         } catch (error) {
-            this.showToast('Sign in failed: ' + error.message);
+            this.showToast(error.message);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Sign In';
+        }
+    },
+
+    async handleSignUp(e) {
+        e.preventDefault();
+
+        const name = document.getElementById('signup-name')?.value.trim();
+        const email = document.getElementById('signup-email')?.value.trim();
+        const password = document.getElementById('signup-password')?.value;
+        const btn = document.getElementById('signup-btn');
+
+        if (!name || !email || !password) {
+            this.showToast('Please fill in all fields');
+            return;
+        }
+
+        if (password.length < 6) {
+            this.showToast('Password must be at least 6 characters');
+            return;
+        }
+
+        try {
+            btn.disabled = true;
+            btn.textContent = 'Creating account...';
+
+            await Auth.signUp(email, password, name);
+            await this.handleSignedIn();
+        } catch (error) {
+            this.showToast(error.message);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Create Account';
+        }
+    },
+
+    async handleForgotPassword(e) {
+        e.preventDefault();
+
+        const email = document.getElementById('reset-email')?.value.trim();
+        const btn = document.getElementById('reset-btn');
+
+        if (!email) {
+            this.showToast('Please enter your email');
+            return;
+        }
+
+        try {
+            btn.disabled = true;
+            btn.textContent = 'Sending...';
+
+            await Auth.sendPasswordReset(email);
+            this.showToast('Password reset email sent! Check your inbox.');
+            this.showAuthForm('signin');
+        } catch (error) {
+            this.showToast(error.message);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Send Reset Link';
         }
     },
 
@@ -417,7 +534,7 @@ const App = {
                 btn.disabled = true;
             }
 
-            const accessToken = await Auth.refreshAccessToken();
+            const accessToken = await Auth.connectGoogleCalendar();
 
             if (accessToken) {
                 this.showToast('Calendar connected!');
@@ -772,8 +889,8 @@ const App = {
         try {
             this.showToast('Opening Google sign-in...');
 
-            // Re-authenticate to get calendar permissions
-            const accessToken = await Auth.refreshAccessToken();
+            // Connect Google Calendar
+            const accessToken = await Auth.connectGoogleCalendar();
 
             if (accessToken) {
                 this.showToast('Calendar connected!');
@@ -1546,6 +1663,47 @@ const App = {
     updateHouseholdUI() {
         document.getElementById('household-name').textContent =
             Household.currentHousehold?.name || 'My Household';
+    },
+
+    // Ensure calendar access - auto-prompt if Google was connected but token expired
+    async ensureCalendarAccess() {
+        // If we already have a token, we're good
+        if (Auth.accessToken) {
+            this.updateCalendarUI(true);
+            return true;
+        }
+
+        // If Google is linked but no token, prompt for reconnection
+        if (Auth.calendarConnected) {
+            this.showToast('Reconnecting to Google Calendar...');
+            try {
+                const token = await Auth.refreshAccessToken();
+                if (token) {
+                    this.updateCalendarUI(true);
+                    return true;
+                }
+            } catch (error) {
+                console.log('Auto-reconnect failed:', error.message);
+                this.showToast('Please reconnect your calendar in Settings');
+                this.updateCalendarUI(false);
+            }
+        }
+
+        return false;
+    },
+
+    // Update calendar connection status in Settings UI
+    updateCalendarUI(connected) {
+        const notConnected = document.getElementById('calendar-not-connected');
+        const connectedEl = document.getElementById('calendar-connected');
+
+        if (connected) {
+            notConnected?.classList.add('hidden');
+            connectedEl?.classList.remove('hidden');
+        } else {
+            notConnected?.classList.remove('hidden');
+            connectedEl?.classList.add('hidden');
+        }
     },
 
     // ==================== AGENDA HANDLERS ====================

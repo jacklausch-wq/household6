@@ -1,5 +1,5 @@
 // Household6 Service Worker
-const CACHE_NAME = 'household6-v16'; // Add calendar onboarding prompt
+const CACHE_NAME = 'household6-v17'; // Email/password auth (no more Google OAuth for login)
 const STATIC_ASSETS = [
     './',
     './index.html',

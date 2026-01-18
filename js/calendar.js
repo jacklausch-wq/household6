@@ -3,14 +3,32 @@ const Calendar = {
     events: [],
     calendars: [],
     selectedCalendarId: null,
+    tokenRefreshInProgress: false,
 
     // Google Calendar API base URL
     API_BASE: 'https://www.googleapis.com/calendar/v3',
 
+    // Check if calendar is available (has token)
+    isAvailable() {
+        return !!Auth.accessToken;
+    },
+
+    // Check if calendar was connected (Google linked) but needs token refresh
+    needsTokenRefresh() {
+        return Auth.calendarConnected && !Auth.accessToken;
+    },
+
     // Make authenticated API request
     async apiRequest(endpoint, options = {}, isRetry = false) {
+        // If no token but Google is linked, try to get one first
+        if (!Auth.accessToken && Auth.calendarConnected && !isRetry) {
+            const token = await this.tryRefreshToken();
+            if (!token) {
+                throw new Error('Calendar session expired. Please reconnect in Settings.');
+            }
+        }
+
         if (!Auth.accessToken) {
-            // No token - don't prompt on initial load, just throw
             throw new Error('Calendar not connected. Please connect your Google Calendar in Settings.');
         }
 
@@ -26,14 +44,17 @@ const Calendar = {
 
         if (response.status === 401 || response.status === 403) {
             if (isRetry) {
-                throw new Error('Calendar authentication failed. Please try reconnecting.');
+                // Clear the bad token
+                Auth.accessToken = null;
+                sessionStorage.removeItem('googleAccessToken');
+                throw new Error('Calendar session expired. Please reconnect in Settings.');
             }
-            // Token expired - prompt user to re-authenticate
-            const reauth = await this.promptReauth('Your calendar session expired. Please reconnect to continue.');
-            if (!reauth) {
-                throw new Error('Calendar reconnection cancelled');
+            // Token expired - try to refresh silently first
+            const refreshed = await this.tryRefreshToken();
+            if (refreshed) {
+                return this.apiRequest(endpoint, options, true);
             }
-            return this.apiRequest(endpoint, options, true);
+            throw new Error('Calendar session expired. Please reconnect in Settings.');
         }
 
         if (!response.ok) {
@@ -44,20 +65,23 @@ const Calendar = {
         return response.json();
     },
 
-    // Prompt user to re-authenticate with Google Calendar
-    async promptReauth(message) {
-        const confirmed = confirm(message + '\n\nClick OK to reconnect now.');
-        if (confirmed) {
-            try {
-                await Auth.refreshAccessToken();
-                return true;
-            } catch (error) {
-                // Re-auth failed
-                alert('Reconnection failed. Please go to Settings and click "Connect Google Calendar".');
-                return false;
-            }
+    // Try to refresh the token (with user interaction if needed)
+    async tryRefreshToken() {
+        // Prevent multiple simultaneous refresh attempts
+        if (this.tokenRefreshInProgress) {
+            return false;
         }
-        return false;
+
+        try {
+            this.tokenRefreshInProgress = true;
+            const token = await Auth.refreshAccessToken();
+            return !!token;
+        } catch (error) {
+            console.log('Token refresh failed:', error.message);
+            return false;
+        } finally {
+            this.tokenRefreshInProgress = false;
+        }
     },
 
     // Get list of user's calendars

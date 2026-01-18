@@ -2,8 +2,8 @@
 const Auth = {
     currentUser: null,
     accessToken: null,
-    isRedirecting: false,
     initResolved: false,
+    calendarConnected: false,
 
     // Allowed emails - only these can access the app
     // Leave empty [] to allow anyone, or add specific emails
@@ -12,17 +12,19 @@ const Auth = {
         // 'spouse@gmail.com',
     ],
 
-    // Detect if running as standalone PWA (iOS or Android)
-    isStandalonePWA() {
-        return window.navigator.standalone === true ||
-               (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
-    },
-
     // Check if email is authorized
     isEmailAllowed(email) {
         // If no allowlist configured, allow everyone
         if (this.ALLOWED_EMAILS.length === 0) return true;
         return this.ALLOWED_EMAILS.includes(email.toLowerCase());
+    },
+
+    // Check if Google provider is linked to the account
+    isGoogleLinked() {
+        if (!this.currentUser) return false;
+        return this.currentUser.providerData.some(
+            provider => provider.providerId === 'google.com'
+        );
     },
 
     // Initialize auth state listener
@@ -37,30 +39,6 @@ const Auth = {
                 }
             };
 
-            // Handle redirect result first (for PWA auth flow)
-            auth.getRedirectResult().then((result) => {
-                if (result && result.user) {
-                    // Successfully returned from redirect
-                    sessionStorage.removeItem('auth_redirecting');
-
-                    // Check if email is allowed
-                    if (!this.isEmailAllowed(result.user.email)) {
-                        auth.signOut();
-                        return;
-                    }
-                    // Get the OAuth access token from redirect result
-                    const credential = firebase.auth.GoogleAuthProvider.credentialFromResult(result);
-                    if (credential && credential.accessToken) {
-                        this.accessToken = credential.accessToken;
-                        sessionStorage.setItem('googleAccessToken', this.accessToken);
-                    }
-                }
-            }).catch((error) => {
-                // Clear redirect flag on error
-                sessionStorage.removeItem('auth_redirecting');
-                console.error('Redirect result error:', error);
-            });
-
             auth.onAuthStateChanged(async (user) => {
                 if (user) {
                     // Check if returning user is still allowed
@@ -74,34 +52,121 @@ const Auth = {
                     }
 
                     this.currentUser = user;
-                    // Get the access token for Google Calendar API
+
+                    // Check if Google Calendar was previously connected
+                    this.calendarConnected = this.isGoogleLinked();
+
+                    // Try to restore access token from session
                     this.accessToken = sessionStorage.getItem('googleAccessToken');
-                    // Clear redirect flag - we're signed in
-                    sessionStorage.removeItem('auth_redirecting');
+
                     resolveOnce(user);
                 } else {
                     this.currentUser = null;
                     this.accessToken = null;
+                    this.calendarConnected = false;
                     resolveOnce(null);
                 }
             });
         });
     },
 
-    // Sign in with Google
-    async signIn() {
-        // Prevent duplicate sign-in attempts
-        if (this.currentUser) {
-            return this.currentUser;
+    // Silently refresh the Google Calendar access token (no popup if possible)
+    async ensureCalendarAccess() {
+        // If we already have a valid token, return it
+        if (this.accessToken) {
+            return this.accessToken;
         }
 
-        // Check if we're already in a redirect flow
-        if (sessionStorage.getItem('auth_redirecting') === 'true') {
-            return null;
+        // If Google is linked, try to get a fresh token
+        if (this.isGoogleLinked()) {
+            try {
+                // Try to get token without popup using getIdToken with forceRefresh
+                // Unfortunately, this only refreshes Firebase token, not Google OAuth token
+                // We need to prompt user to reauthenticate
+                return await this.refreshAccessToken();
+            } catch (error) {
+                console.log('Could not refresh calendar token:', error.message);
+                return null;
+            }
         }
 
+        return null;
+    },
+
+    // Sign in with email and password
+    async signIn(email, password) {
         try {
-            // Create a FRESH provider instance every time (fixes scope issues)
+            // Check if email is allowed before attempting sign in
+            if (!this.isEmailAllowed(email)) {
+                throw new Error('Access denied. Your email is not authorized to use this app.');
+            }
+
+            const result = await auth.signInWithEmailAndPassword(email, password);
+            this.currentUser = result.user;
+            return result.user;
+        } catch (error) {
+            // Translate Firebase error codes to user-friendly messages
+            if (error.code === 'auth/user-not-found') {
+                throw new Error('No account found with this email. Please sign up first.');
+            } else if (error.code === 'auth/wrong-password') {
+                throw new Error('Incorrect password. Please try again.');
+            } else if (error.code === 'auth/invalid-email') {
+                throw new Error('Please enter a valid email address.');
+            } else if (error.code === 'auth/too-many-requests') {
+                throw new Error('Too many failed attempts. Please try again later.');
+            }
+            throw error;
+        }
+    },
+
+    // Sign up with email and password
+    async signUp(email, password, displayName) {
+        try {
+            // Check if email is allowed
+            if (!this.isEmailAllowed(email)) {
+                throw new Error('Access denied. Your email is not authorized to use this app.');
+            }
+
+            const result = await auth.createUserWithEmailAndPassword(email, password);
+
+            // Update profile with display name
+            if (displayName) {
+                await result.user.updateProfile({ displayName: displayName });
+            }
+
+            this.currentUser = result.user;
+            return result.user;
+        } catch (error) {
+            // Translate Firebase error codes to user-friendly messages
+            if (error.code === 'auth/email-already-in-use') {
+                throw new Error('An account with this email already exists. Please sign in.');
+            } else if (error.code === 'auth/invalid-email') {
+                throw new Error('Please enter a valid email address.');
+            } else if (error.code === 'auth/weak-password') {
+                throw new Error('Password must be at least 6 characters long.');
+            }
+            throw error;
+        }
+    },
+
+    // Send password reset email
+    async sendPasswordReset(email) {
+        try {
+            await auth.sendPasswordResetEmail(email);
+            return true;
+        } catch (error) {
+            if (error.code === 'auth/user-not-found') {
+                throw new Error('No account found with this email.');
+            } else if (error.code === 'auth/invalid-email') {
+                throw new Error('Please enter a valid email address.');
+            }
+            throw error;
+        }
+    },
+
+    // Connect Google Calendar (used after login, in Settings)
+    async connectGoogleCalendar() {
+        try {
             const provider = new firebase.auth.GoogleAuthProvider();
             provider.addScope('https://www.googleapis.com/auth/calendar');
             provider.addScope('https://www.googleapis.com/auth/calendar.events');
@@ -110,44 +175,21 @@ const Auth = {
                 access_type: 'offline'
             });
 
-            // For standalone PWA (iOS/Android), use redirect (popups don't work)
-            if (this.isStandalonePWA()) {
-                sessionStorage.setItem('auth_redirecting', 'true');
-                await auth.signInWithRedirect(provider);
-                return null;
-            }
-
-            // Use popup for desktop/browser
-            const result = await auth.signInWithPopup(provider);
-
-            // Check if email is allowed
-            if (!this.isEmailAllowed(result.user.email)) {
-                await auth.signOut();
-                throw new Error('Access denied. Your email is not authorized to use this app.');
-            }
+            // Use popup for calendar connection (user is already in the app)
+            const result = await auth.currentUser.linkWithPopup(provider);
 
             // Get the OAuth access token from the credential
             const credential = firebase.auth.GoogleAuthProvider.credentialFromResult(result);
             if (credential && credential.accessToken) {
                 this.accessToken = credential.accessToken;
                 sessionStorage.setItem('googleAccessToken', this.accessToken);
-            } else if (result.credential && result.credential.accessToken) {
-                // Fallback for older Firebase versions
-                this.accessToken = result.credential.accessToken;
-                sessionStorage.setItem('googleAccessToken', this.accessToken);
             }
-            return result.user;
+            return this.accessToken;
         } catch (error) {
-            // If popup fails, try redirect as fallback
-            if (error.code === 'auth/popup-blocked' ||
-                error.code === 'auth/popup-closed-by-user' ||
-                error.code === 'auth/internal-error') {
-                sessionStorage.setItem('auth_redirecting', 'true');
-                const provider = new firebase.auth.GoogleAuthProvider();
-                provider.addScope('https://www.googleapis.com/auth/calendar');
-                provider.addScope('https://www.googleapis.com/auth/calendar.events');
-                await auth.signInWithRedirect(provider);
-                return null;
+            // If already linked, try reauthenticate instead
+            if (error.code === 'auth/credential-already-in-use' ||
+                error.code === 'auth/provider-already-linked') {
+                return this.refreshAccessToken();
             }
             throw error;
         }
