@@ -1,31 +1,31 @@
 // Household6 Service Worker
-const CACHE_NAME = 'household6-v7'; // Bumped version for install instructions
+const CACHE_NAME = 'household6-v8'; // Bumped version for GitHub Pages path fix
 const STATIC_ASSETS = [
-    '/',
-    '/index.html',
-    '/terms.html',
-    '/privacy.html',
-    '/css/styles.css',
-    '/js/security.js', // Security utilities - MUST be cached
-    '/js/app.js',
-    '/js/firebase-config.js',
-    '/js/auth.js',
-    '/js/household.js',
-    '/js/tasks.js',
-    '/js/shopping.js',
-    '/js/calendar.js',
-    '/js/gemini.js',
-    '/js/voice.js',
-    '/js/locations.js',
-    '/js/reminders.js',
-    '/js/notifications.js',
-    '/js/recipes.js',
-    '/js/inventory.js',
-    '/js/meal-categories.js',
-    '/js/meal-planner.js',
-    '/js/agenda.js',
-    '/manifest.json',
-    '/pages/voice.html'
+    './',
+    './index.html',
+    './terms.html',
+    './privacy.html',
+    './css/styles.css',
+    './js/security.js', // Security utilities - MUST be cached
+    './js/app.js',
+    './js/firebase-config.js',
+    './js/auth.js',
+    './js/household.js',
+    './js/tasks.js',
+    './js/shopping.js',
+    './js/calendar.js',
+    './js/gemini.js',
+    './js/voice.js',
+    './js/locations.js',
+    './js/reminders.js',
+    './js/notifications.js',
+    './js/recipes.js',
+    './js/inventory.js',
+    './js/meal-categories.js',
+    './js/meal-planner.js',
+    './js/agenda.js',
+    './manifest.json',
+    './pages/voice.html'
 ];
 
 // Install event - cache static assets
@@ -110,8 +110,8 @@ self.addEventListener('push', (event) => {
 
     const options = {
         body: data.body,
-        icon: '/icons/icon-192.png',
-        badge: '/icons/icon-72.png',
+        icon: './icons/icon-192.png',
+        badge: './icons/icon-72.png',
         vibrate: [200, 100, 200],
         data: data.data || {},
         actions: data.actions || []
@@ -137,7 +137,7 @@ self.addEventListener('notificationclick', (event) => {
                 }
                 // Open new window if no existing window
                 if (clients.openWindow) {
-                    return clients.openWindow('/');
+                    return clients.openWindow('./');
                 }
             })
     );

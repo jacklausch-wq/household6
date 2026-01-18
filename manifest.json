@@ -2,13 +2,13 @@
     "name": "Household6",
     "short_name": "Household6",
     "description": "Your household command center - manage tasks, events, and schedules together",
-    "start_url": "/index.html",
-    "scope": "/",
+    "start_url": "./index.html",
+    "scope": "./",
     "display": "standalone",
     "background_color": "#FBF9F7",
     "theme_color": "#C4A07A",
     "orientation": "portrait",
-    "id": "/",
+    "id": "./",
     "prefer_related_applications": false,
     "icons": [
         {
@@ -59,7 +59,7 @@
             "name": "Voice Input",
             "short_name": "Voice",
             "description": "Quick voice command",
-            "url": "/pages/voice.html",
+            "url": "./pages/voice.html",
             "icons": [
                 {
                     "src": "icons/voice-icon-192.png",
