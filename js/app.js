@@ -78,10 +78,14 @@ const App = {
         // Initialize week start for planner
         this.currentWeekStart = MealPlanner.getWeekStart();
 
-        // Load calendar
+        // Load calendar (gracefully handle missing token)
         Calendar.loadSelectedCalendar();
-        if (Calendar.selectedCalendarId) {
-            await this.loadTodayData();
+        if (Calendar.selectedCalendarId && Auth.accessToken) {
+            try {
+                await this.loadTodayData();
+            } catch (e) {
+                console.log('Calendar not available yet:', e.message);
+            }
         }
 
         // Initialize notifications
@@ -99,8 +103,14 @@ const App = {
 
     // Load today's data
     async loadTodayData() {
-        const events = await Calendar.getTodayEvents();
-        this.renderTodayEvents(events);
+        try {
+            if (Auth.accessToken && Calendar.selectedCalendarId) {
+                const events = await Calendar.getTodayEvents();
+                this.renderTodayEvents(events);
+            }
+        } catch (e) {
+            console.log('Could not load calendar events:', e.message);
+        }
         this.renderTodayTasks();
     },
 

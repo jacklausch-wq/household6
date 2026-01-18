@@ -10,12 +10,8 @@ const Calendar = {
     // Make authenticated API request
     async apiRequest(endpoint, options = {}, isRetry = false) {
         if (!Auth.accessToken) {
-            // No token - prompt user to sign in again
-            const reauth = await this.promptReauth('No calendar access token. Please reconnect your Google Calendar.');
-            if (!reauth) {
-                throw new Error('Calendar not connected');
-            }
-            return this.apiRequest(endpoint, options, true);
+            // No token - don't prompt on initial load, just throw
+            throw new Error('Calendar not connected. Please connect your Google Calendar in Settings.');
         }
 
         const url = `${this.API_BASE}${endpoint}`;

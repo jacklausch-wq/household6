@@ -1,5 +1,5 @@
 // Household6 Service Worker
-const CACHE_NAME = 'household6-v13'; // Fix auth handler extension
+const CACHE_NAME = 'household6-v14'; // Graceful calendar handling without token
 const STATIC_ASSETS = [
     './',
     './index.html',
