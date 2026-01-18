@@ -1,5 +1,5 @@
 // Household6 Service Worker
-const CACHE_NAME = 'household6-v21'; // Never auto-trigger popup - must be from user click
+const CACHE_NAME = 'household6-v22'; // Fix SW path for GitHub Pages + add favicon
 const STATIC_ASSETS = [
     './',
     './index.html',

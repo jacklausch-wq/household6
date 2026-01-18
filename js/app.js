@@ -1876,10 +1876,11 @@ const App = {
     async registerServiceWorker() {
         if ('serviceWorker' in navigator) {
             try {
-                await navigator.serviceWorker.register('/sw.js');
+                // Use relative path for GitHub Pages compatibility
+                await navigator.serviceWorker.register('./sw.js');
                 // Service Worker registered successfully
             } catch (error) {
-                // Service Worker registration failed
+                console.log('Service Worker registration failed:', error);
             }
         }
 
