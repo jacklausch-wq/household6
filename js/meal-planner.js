@@ -47,6 +47,9 @@ const MealPlanner = {
 
     // Get plan for a specific week
     getPlanForWeek(weekStartDate) {
+        if (!weekStartDate) {
+            weekStartDate = this.getWeekStart();
+        }
         const weekStartStr = typeof weekStartDate === 'string'
             ? weekStartDate
             : weekStartDate.toISOString().split('T')[0];
