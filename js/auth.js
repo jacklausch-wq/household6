@@ -70,27 +70,13 @@ const Auth = {
         });
     },
 
-    // Silently refresh the Google Calendar access token (no popup if possible)
-    async ensureCalendarAccess() {
-        // If we already have a valid token, return it
-        if (this.accessToken) {
-            return this.accessToken;
-        }
-
-        // If Google is linked, try to get a fresh token
-        if (this.isGoogleLinked()) {
-            try {
-                // Try to get token without popup using getIdToken with forceRefresh
-                // Unfortunately, this only refreshes Firebase token, not Google OAuth token
-                // We need to prompt user to reauthenticate
-                return await this.refreshAccessToken();
-            } catch (error) {
-                console.log('Could not refresh calendar token:', error.message);
-                return null;
-            }
-        }
-
-        return null;
+    // Check if we have calendar access - NEVER triggers popup
+    // Returns the token if we have one, null otherwise
+    // User must manually click "Connect Calendar" to get a new token
+    ensureCalendarAccess() {
+        // Just return whatever token we have (or null)
+        // We can't auto-refresh because popups get blocked when not from user click
+        return this.accessToken;
     },
 
     // Sign in with email and password

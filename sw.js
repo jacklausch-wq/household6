@@ -1,5 +1,5 @@
 // Household6 Service Worker
-const CACHE_NAME = 'household6-v20'; // Fix popup blocked - simplify calendar connect + expand CSP frame-src
+const CACHE_NAME = 'household6-v21'; // Never auto-trigger popup - must be from user click
 const STATIC_ASSETS = [
     './',
     './index.html',

@@ -1665,7 +1665,7 @@ const App = {
             Household.currentHousehold?.name || 'My Household';
     },
 
-    // Ensure calendar access - auto-prompt if Google was connected but token expired
+    // Check calendar access status - NEVER auto-triggers popup (that would be blocked)
     async ensureCalendarAccess() {
         // If we already have a token, we're good
         if (Auth.accessToken) {
@@ -1673,20 +1673,11 @@ const App = {
             return true;
         }
 
-        // If Google is linked but no token, prompt for reconnection
+        // If Google was linked but token expired, just update UI to show disconnected
+        // User must manually click "Connect Calendar" button to trigger popup
         if (Auth.calendarConnected) {
-            this.showToast('Reconnecting to Google Calendar...');
-            try {
-                const token = await Auth.refreshAccessToken();
-                if (token) {
-                    this.updateCalendarUI(true);
-                    return true;
-                }
-            } catch (error) {
-                console.log('Auto-reconnect failed:', error.message);
-                this.showToast('Please reconnect your calendar in Settings');
-                this.updateCalendarUI(false);
-            }
+            this.updateCalendarUI(false);
+            // Don't show toast on page load - too annoying
         }
 
         return false;

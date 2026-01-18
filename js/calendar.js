@@ -65,23 +65,13 @@ const Calendar = {
         return response.json();
     },
 
-    // Try to refresh the token (with user interaction if needed)
+    // Try to refresh the token - but NEVER trigger popup (would be blocked by browser)
+    // This just returns false if token is missing - user must manually reconnect
     async tryRefreshToken() {
-        // Prevent multiple simultaneous refresh attempts
-        if (this.tokenRefreshInProgress) {
-            return false;
-        }
-
-        try {
-            this.tokenRefreshInProgress = true;
-            const token = await Auth.refreshAccessToken();
-            return !!token;
-        } catch (error) {
-            console.log('Token refresh failed:', error.message);
-            return false;
-        } finally {
-            this.tokenRefreshInProgress = false;
-        }
+        // We can't auto-refresh because popups get blocked when not from user action
+        // Just return false and let the caller handle the missing token gracefully
+        console.log('Calendar token missing - user must reconnect in Settings');
+        return false;
     },
 
     // Get list of user's calendars
