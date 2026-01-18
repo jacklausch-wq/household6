@@ -165,39 +165,64 @@ const Auth = {
     },
 
     // Connect Google Calendar (used after login, in Settings)
+    // IMPORTANT: This must be called directly from a click handler to avoid popup blocking
     async connectGoogleCalendar() {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        provider.addScope('https://www.googleapis.com/auth/calendar');
+        provider.addScope('https://www.googleapis.com/auth/calendar.events');
+        provider.setCustomParameters({
+            prompt: 'consent',
+            access_type: 'offline'
+        });
+
         try {
-            const provider = new firebase.auth.GoogleAuthProvider();
-            provider.addScope('https://www.googleapis.com/auth/calendar');
-            provider.addScope('https://www.googleapis.com/auth/calendar.events');
-            provider.setCustomParameters({
-                prompt: 'consent',
-                access_type: 'offline'
-            });
+            let result;
+            let credential;
 
-            // First try to link the Google account to the current user
-            try {
-                const result = await auth.currentUser.linkWithPopup(provider);
-                const credential = firebase.auth.GoogleAuthProvider.credentialFromResult(result);
-                if (credential && credential.accessToken) {
-                    this.accessToken = credential.accessToken;
-                    sessionStorage.setItem('googleAccessToken', this.accessToken);
-                    this.calendarConnected = true;
-                    return this.accessToken;
+            // Choose the right popup method based on whether Google is already linked
+            if (this.isGoogleLinked()) {
+                // Already linked - use reauthenticate to get fresh token
+                result = await auth.currentUser.reauthenticateWithPopup(provider);
+                credential = firebase.auth.GoogleAuthProvider.credentialFromResult(result);
+            } else {
+                // Not linked - try to link Google account
+                try {
+                    result = await auth.currentUser.linkWithPopup(provider);
+                    credential = firebase.auth.GoogleAuthProvider.credentialFromResult(result);
+                } catch (linkError) {
+                    // If already linked (race condition) or other issue, use reauthenticate
+                    if (linkError.code === 'auth/credential-already-in-use' ||
+                        linkError.code === 'auth/provider-already-linked' ||
+                        linkError.code === 'auth/email-already-in-use') {
+                        result = await auth.currentUser.reauthenticateWithPopup(provider);
+                        credential = firebase.auth.GoogleAuthProvider.credentialFromResult(result);
+                    } else {
+                        throw linkError;
+                    }
                 }
-            } catch (linkError) {
-                // If linking fails, try reauthenticate (for already-linked accounts)
-                if (linkError.code === 'auth/credential-already-in-use' ||
-                    linkError.code === 'auth/provider-already-linked' ||
-                    linkError.code === 'auth/email-already-in-use') {
-                    return this.refreshAccessToken();
-                }
-
-                // For other errors (including internal-error), fall back to reauthenticate
-                console.log('Link failed, trying reauthenticate:', linkError.code);
-                return this.refreshAccessToken();
             }
+
+            // Extract token from result
+            if (credential && credential.accessToken) {
+                this.accessToken = credential.accessToken;
+                sessionStorage.setItem('googleAccessToken', this.accessToken);
+                this.calendarConnected = true;
+                return this.accessToken;
+            } else if (result.credential && result.credential.accessToken) {
+                this.accessToken = result.credential.accessToken;
+                sessionStorage.setItem('googleAccessToken', this.accessToken);
+                this.calendarConnected = true;
+                return this.accessToken;
+            }
+
+            throw new Error('Could not get calendar access token');
         } catch (error) {
+            if (error.code === 'auth/popup-blocked') {
+                throw new Error('Popup was blocked. Please allow popups for this site and try again.');
+            }
+            if (error.code === 'auth/popup-closed-by-user') {
+                throw new Error('Sign-in was cancelled.');
+            }
             console.error('Calendar connection error:', error);
             throw error;
         }
@@ -242,50 +267,10 @@ const Auth = {
         return userData;
     },
 
-    // Refresh Google access token
+    // Refresh Google access token - just calls connectGoogleCalendar
+    // This is called when an existing token expires
     async refreshAccessToken() {
-        try {
-            const provider = new firebase.auth.GoogleAuthProvider();
-            provider.addScope('https://www.googleapis.com/auth/calendar');
-            provider.addScope('https://www.googleapis.com/auth/calendar.events');
-            provider.setCustomParameters({
-                prompt: 'consent',
-                access_type: 'offline'
-            });
-
-            let result;
-            let credential;
-
-            // Check if Google is already linked to this account
-            if (this.isGoogleLinked()) {
-                // Use reauthenticate for linked accounts
-                result = await auth.currentUser.reauthenticateWithPopup(provider);
-                credential = firebase.auth.GoogleAuthProvider.credentialFromResult(result);
-            } else {
-                // For non-linked accounts, we need to do a popup sign-in
-                // This will show Google login but won't change our Firebase auth state
-                // We just extract the OAuth token from the result
-                result = await auth.signInWithPopup(provider);
-                credential = firebase.auth.GoogleAuthProvider.credentialFromResult(result);
-
-                // The signInWithPopup might have changed our auth to the Google account
-                // We need to handle this - but for now, just get the token
-            }
-
-            if (credential && credential.accessToken) {
-                this.accessToken = credential.accessToken;
-                sessionStorage.setItem('googleAccessToken', this.accessToken);
-                this.calendarConnected = true;
-            } else if (result.credential && result.credential.accessToken) {
-                this.accessToken = result.credential.accessToken;
-                sessionStorage.setItem('googleAccessToken', this.accessToken);
-                this.calendarConnected = true;
-            }
-            return this.accessToken;
-        } catch (error) {
-            console.error('Token refresh error:', error);
-            throw error;
-        }
+        return this.connectGoogleCalendar();
     }
 };
 

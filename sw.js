@@ -1,5 +1,5 @@
 // Household6 Service Worker
-const CACHE_NAME = 'household6-v19'; // Fix CSP for Google auth popup + meal planner null fix
+const CACHE_NAME = 'household6-v20'; // Fix popup blocked - simplify calendar connect + expand CSP frame-src
 const STATIC_ASSETS = [
     './',
     './index.html',
