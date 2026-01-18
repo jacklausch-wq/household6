@@ -67,8 +67,8 @@ const Auth = {
                     // Check if Google Calendar was previously connected
                     this.calendarConnected = this.isGoogleLinked();
 
-                    // Try to restore access token from session
-                    this.accessToken = sessionStorage.getItem('googleAccessToken');
+                    // Try to restore access token from localStorage (survives app restarts)
+                    this.accessToken = localStorage.getItem('googleAccessToken');
 
                     resolveOnce(user);
                 } else {
@@ -187,7 +187,7 @@ const Auth = {
 
             if (token) {
                 this.accessToken = token;
-                sessionStorage.setItem('googleAccessToken', token);
+                localStorage.setItem('googleAccessToken', token);
                 this.calendarConnected = true;
                 this.currentUser = result.user; // Update current user reference
                 return token;
@@ -213,7 +213,7 @@ const Auth = {
     async signOut() {
         try {
             await auth.signOut();
-            sessionStorage.removeItem('googleAccessToken');
+            localStorage.removeItem('googleAccessToken');
             localStorage.removeItem('householdId');
             this.currentUser = null;
             this.accessToken = null;

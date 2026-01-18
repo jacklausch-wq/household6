@@ -46,7 +46,7 @@ const Calendar = {
             if (isRetry) {
                 // Clear the bad token
                 Auth.accessToken = null;
-                sessionStorage.removeItem('googleAccessToken');
+                localStorage.removeItem('googleAccessToken');
                 throw new Error('Calendar session expired. Please reconnect in Settings.');
             }
             // Token expired - try to refresh silently first

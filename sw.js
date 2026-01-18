@@ -1,5 +1,5 @@
 // Household6 Service Worker
-const CACHE_NAME = 'household6-v25'; // Show calendar disconnected state with reconnect button
+const CACHE_NAME = 'household6-v26'; // Use localStorage for token persistence across app restarts
 const STATIC_ASSETS = [
     './',
     './index.html',
