@@ -2,6 +2,8 @@
 const Auth = {
     currentUser: null,
     accessToken: null,
+    isRedirecting: false,
+    initResolved: false,
 
     // Allowed emails - only these can access the app
     // Leave empty [] to allow anyone, or add specific emails
@@ -27,9 +29,21 @@ const Auth = {
     // Initialize auth state listener
     init() {
         return new Promise((resolve) => {
+            let resolved = false;
+            const resolveOnce = (value) => {
+                if (!resolved) {
+                    resolved = true;
+                    this.initResolved = true;
+                    resolve(value);
+                }
+            };
+
             // Handle redirect result first (for iOS PWA)
             auth.getRedirectResult().then((result) => {
                 if (result && result.user) {
+                    // Successfully returned from redirect
+                    sessionStorage.removeItem('auth_redirecting');
+
                     // Check if email is allowed
                     if (!this.isEmailAllowed(result.user.email)) {
                         auth.signOut();
@@ -43,7 +57,8 @@ const Auth = {
                     }
                 }
             }).catch((error) => {
-                // Redirect error - will be handled by onAuthStateChanged
+                // Clear redirect flag on error
+                sessionStorage.removeItem('auth_redirecting');
                 console.error('Redirect result error:', error);
             });
 
@@ -55,19 +70,20 @@ const Auth = {
                         await auth.signOut();
                         this.currentUser = null;
                         this.accessToken = null;
-                        resolve(null);
+                        resolveOnce(null);
                         return;
                     }
 
                     this.currentUser = user;
                     // Get the access token for Google Calendar API
-                    const credential = await user.getIdTokenResult();
                     this.accessToken = sessionStorage.getItem('googleAccessToken');
-                    resolve(user);
+                    // Clear redirect flag - we're signed in
+                    sessionStorage.removeItem('auth_redirecting');
+                    resolveOnce(user);
                 } else {
                     this.currentUser = null;
                     this.accessToken = null;
-                    resolve(null);
+                    resolveOnce(null);
                 }
             });
         });
@@ -75,6 +91,16 @@ const Auth = {
 
     // Sign in with Google
     async signIn() {
+        // Prevent duplicate sign-in attempts
+        if (this.currentUser) {
+            return this.currentUser;
+        }
+
+        // Check if we're already in a redirect flow
+        if (sessionStorage.getItem('auth_redirecting') === 'true') {
+            return null;
+        }
+
         try {
             // Create a FRESH provider instance every time (fixes scope issues)
             const provider = new firebase.auth.GoogleAuthProvider();
@@ -87,6 +113,7 @@ const Auth = {
 
             // Use redirect for iOS PWA (popups don't work in standalone mode)
             if (this.isIOSPWA()) {
+                sessionStorage.setItem('auth_redirecting', 'true');
                 await auth.signInWithRedirect(provider);
                 // This won't return - page will redirect
                 return null;
@@ -117,6 +144,7 @@ const Auth = {
             if (error.code === 'auth/popup-blocked' ||
                 error.code === 'auth/popup-closed-by-user' ||
                 error.code === 'auth/internal-error') {
+                sessionStorage.setItem('auth_redirecting', 'true');
                 const provider = new firebase.auth.GoogleAuthProvider();
                 provider.addScope('https://www.googleapis.com/auth/calendar');
                 provider.addScope('https://www.googleapis.com/auth/calendar.events');
