@@ -1,5 +1,5 @@
 // Household6 Service Worker
-const CACHE_NAME = 'household6-v23'; // Simplify calendar connect to single signInWithPopup
+const CACHE_NAME = 'household6-v24'; // Add flag to prevent auth loop during calendar connect
 const STATIC_ASSETS = [
     './',
     './index.html',

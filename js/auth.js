@@ -4,6 +4,7 @@ const Auth = {
     accessToken: null,
     initResolved: false,
     calendarConnected: false,
+    isConnectingCalendar: false, // Flag to prevent auth state disruption during calendar connect
 
     // Allowed emails - only these can access the app
     // Leave empty [] to allow anyone, or add specific emails
@@ -40,6 +41,16 @@ const Auth = {
             };
 
             auth.onAuthStateChanged(async (user) => {
+                // If we're in the middle of connecting calendar, just update user reference
+                // but don't trigger any redirects or state resets
+                if (this.isConnectingCalendar) {
+                    if (user) {
+                        this.currentUser = user;
+                        this.calendarConnected = this.isGoogleLinked();
+                    }
+                    return;
+                }
+
                 if (user) {
                     // Check if returning user is still allowed
                     if (!this.isEmailAllowed(user.email)) {
@@ -162,6 +173,9 @@ const Auth = {
             access_type: 'offline'
         });
 
+        // Set flag to prevent auth state changes from disrupting the app
+        this.isConnectingCalendar = true;
+
         try {
             // Use signInWithPopup - this works even for email/password users
             // It will sign them in with Google (which is fine, we just need the token)
@@ -189,6 +203,9 @@ const Auth = {
             }
             console.error('Calendar connection error:', error);
             throw error;
+        } finally {
+            // Always reset the flag
+            this.isConnectingCalendar = false;
         }
     },
 
