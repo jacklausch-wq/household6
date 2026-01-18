@@ -56,7 +56,7 @@ const Calendar = {
                 await Auth.refreshAccessToken();
                 return true;
             } catch (error) {
-                console.error('Re-auth failed:', error);
+                // Re-auth failed
                 alert('Reconnection failed. Please go to Settings and click "Connect Google Calendar".');
                 return false;
             }
@@ -71,7 +71,7 @@ const Calendar = {
             this.calendars = data.items || [];
             return this.calendars;
         } catch (error) {
-            console.error('Error fetching calendars:', error);
+            // Error fetching calendars
             return [];
         }
     },
@@ -107,7 +107,7 @@ const Calendar = {
             this.events = (data.items || []).map(this.normalizeEvent);
             return this.events;
         } catch (error) {
-            console.error('Error fetching events:', error);
+            // Error fetching events
             return [];
         }
     },

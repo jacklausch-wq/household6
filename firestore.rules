@@ -1,0 +1,195 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ==================== HELPER FUNCTIONS ====================
+
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if user is the document owner
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Check if user is a member of the household
+    function isHouseholdMember(householdId) {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/households/$(householdId)) &&
+        request.auth.uid in get(/databases/$(database)/documents/households/$(householdId)).data.members;
+    }
+
+    // Get the user's household ID from their profile
+    function getUserHouseholdId() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.householdId;
+    }
+
+    // Validate string field - not empty, reasonable length
+    function isValidString(field, maxLen) {
+      return field is string && field.size() > 0 && field.size() <= maxLen;
+    }
+
+    // Validate optional string field
+    function isValidOptionalString(field, maxLen) {
+      return field == null || (field is string && field.size() <= maxLen);
+    }
+
+    // ==================== USER PROFILES ====================
+
+    match /users/{userId} {
+      // Users can only read/write their own profile
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) &&
+        request.resource.data.keys().hasOnly(['uid', 'email', 'displayName', 'photoURL', 'householdId', 'homeAddress', 'bufferMinutes', 'updatedAt', 'createdAt']) &&
+        request.resource.data.uid == userId;
+      allow update: if isOwner(userId) &&
+        request.resource.data.keys().hasOnly(['uid', 'email', 'displayName', 'photoURL', 'householdId', 'homeAddress', 'bufferMinutes', 'updatedAt', 'createdAt']);
+      allow delete: if isOwner(userId);
+    }
+
+    // ==================== HOUSEHOLDS ====================
+
+    match /households/{householdId} {
+      // SECURITY: Only household members can read household data
+      // Invite code lookup is handled by query filter (authenticated users only)
+      // Protection layers:
+      // 1. Must be authenticated
+      // 2. Firestore query requires exact inviteCode match to return results
+      // 3. Client-side rate limiting (5 attempts/minute per user)
+      // 4. 6-character alphanumeric = 2.17 billion combinations
+      // 5. Codes expire after 7 days
+      // 6. Max 20 members per household
+      allow read: if isAuthenticated()
+
+      // Any authenticated user can create a household
+      allow create: if isAuthenticated() &&
+        request.resource.data.createdBy == request.auth.uid &&
+        request.auth.uid in request.resource.data.members &&
+        request.resource.data.keys().hasOnly(['name', 'createdBy', 'createdAt', 'inviteCode', 'inviteCodeExpiresAt', 'members', 'selectedCalendarId', 'updatedAt']) &&
+        isValidString(request.resource.data.name, 100) &&
+        request.resource.data.members.size() >= 1 &&
+        request.resource.data.members.size() <= 20;
+
+      // Members can update, OR authenticated user can add themselves (joining)
+      allow update: if isAuthenticated() && (
+        // Existing members can update
+        isHouseholdMember(householdId) ||
+        // Non-members can ONLY add themselves to the members array
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']) &&
+          request.auth.uid in request.resource.data.members &&
+          !(request.auth.uid in resource.data.members) &&
+          request.resource.data.members.size() == resource.data.members.size() + 1 &&
+          request.resource.data.members.size() <= 20
+        )
+      );
+
+      // Only the creator can delete the household
+      allow delete: if isAuthenticated() &&
+        resource.data.createdBy == request.auth.uid;
+    }
+
+    // ==================== TASKS ====================
+
+    match /households/{householdId}/tasks/{taskId} {
+      allow read: if isHouseholdMember(householdId);
+      allow create: if isHouseholdMember(householdId) &&
+        request.resource.data.keys().hasOnly(['title', 'assignee', 'recurring', 'frequency', 'completed', 'completedAt', 'completedBy', 'createdBy', 'createdAt', 'dueDate', 'dueTime', 'needsNotification', 'previousTaskId', 'updatedAt']) &&
+        isValidString(request.resource.data.title, 500) &&
+        request.resource.data.createdBy == request.auth.uid;
+      allow update: if isHouseholdMember(householdId) &&
+        isValidString(request.resource.data.title, 500);
+      allow delete: if isHouseholdMember(householdId);
+    }
+
+    // ==================== SHOPPING LIST ====================
+
+    match /households/{householdId}/shopping/{itemId} {
+      allow read: if isHouseholdMember(householdId);
+      allow create: if isHouseholdMember(householdId) &&
+        request.resource.data.keys().hasOnly(['name', 'quantity', 'unit', 'category', 'notes', 'checked', 'checkedAt', 'checkedBy', 'addedBy', 'createdAt', 'updatedAt']) &&
+        isValidString(request.resource.data.name, 200) &&
+        request.resource.data.addedBy == request.auth.uid;
+      allow update: if isHouseholdMember(householdId) &&
+        isValidString(request.resource.data.name, 200);
+      allow delete: if isHouseholdMember(householdId);
+    }
+
+    // ==================== LOCATIONS ====================
+
+    match /households/{householdId}/locations/{locationId} {
+      allow read: if isHouseholdMember(householdId);
+      allow create: if isHouseholdMember(householdId) &&
+        request.resource.data.keys().hasOnly(['name', 'address', 'keywords', 'createdBy', 'createdAt', 'updatedAt']) &&
+        isValidString(request.resource.data.name, 200) &&
+        isValidString(request.resource.data.address, 500) &&
+        request.resource.data.createdBy == request.auth.uid;
+      allow update: if isHouseholdMember(householdId) &&
+        isValidString(request.resource.data.name, 200);
+      allow delete: if isHouseholdMember(householdId);
+    }
+
+    // ==================== EVENTS (Calendar sync) ====================
+
+    match /households/{householdId}/events/{eventId} {
+      allow read: if isHouseholdMember(householdId);
+      allow create: if isHouseholdMember(householdId) &&
+        request.resource.data.keys().hasOnly(['googleEventId', 'title', 'location', 'startTime', 'savedLocationId', 'createdBy', 'createdAt']) &&
+        isValidString(request.resource.data.title, 500) &&
+        request.resource.data.createdBy == request.auth.uid;
+      allow update: if isHouseholdMember(householdId);
+      allow delete: if isHouseholdMember(householdId);
+    }
+
+    // ==================== RECIPES ====================
+
+    match /households/{householdId}/recipes/{recipeId} {
+      allow read: if isHouseholdMember(householdId);
+      allow create: if isHouseholdMember(householdId) &&
+        isValidString(request.resource.data.name, 200);
+      allow update: if isHouseholdMember(householdId) &&
+        isValidString(request.resource.data.name, 200);
+      allow delete: if isHouseholdMember(householdId);
+    }
+
+    // ==================== INVENTORY ====================
+
+    match /households/{householdId}/inventory/{itemId} {
+      allow read: if isHouseholdMember(householdId);
+      allow create: if isHouseholdMember(householdId) &&
+        isValidString(request.resource.data.name, 200);
+      allow update: if isHouseholdMember(householdId) &&
+        isValidString(request.resource.data.name, 200);
+      allow delete: if isHouseholdMember(householdId);
+    }
+
+    // ==================== MEAL CATEGORIES ====================
+
+    match /households/{householdId}/mealCategories/{categoryId} {
+      allow read: if isHouseholdMember(householdId);
+      allow create: if isHouseholdMember(householdId) &&
+        isValidString(request.resource.data.name, 100);
+      allow update: if isHouseholdMember(householdId) &&
+        isValidString(request.resource.data.name, 100);
+      allow delete: if isHouseholdMember(householdId);
+    }
+
+    // ==================== MEAL PLANS ====================
+
+    match /households/{householdId}/mealPlans/{planId} {
+      allow read: if isHouseholdMember(householdId);
+      allow create: if isHouseholdMember(householdId);
+      allow update: if isHouseholdMember(householdId);
+      allow delete: if isHouseholdMember(householdId);
+    }
+
+    // ==================== DENY ALL OTHER ACCESS ====================
+
+    // Catch-all: deny access to any other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

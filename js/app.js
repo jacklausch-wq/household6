@@ -3,10 +3,16 @@ const App = {
     currentTab: 'today',
     currentMonth: new Date(),
     selectedDate: new Date(),
+    currentWeekStart: null,
+    currentInventoryLocation: 'Refrigerator',
+    wizardStep: 1,
+    wizardData: {},
+    currentRecipeId: null,
+    parsedRecipeData: null,
 
     // Initialize the application
     async init() {
-        console.log('Initializing Household6...');
+        // Initializing Household6
 
         // Apply saved theme immediately
         this.initTheme();
@@ -50,6 +56,27 @@ const App = {
 
         // Subscribe to locations
         Locations.subscribe((locations) => this.renderLocations(locations));
+
+        // Subscribe to recipes
+        Recipes.subscribe((recipes) => this.renderRecipes(recipes));
+
+        // Subscribe to inventory
+        Inventory.subscribe((items) => this.renderInventory(items));
+
+        // Subscribe to meal categories
+        MealCategories.subscribe(() => this.updateCategorySelects());
+
+        // Subscribe to meal plans
+        MealPlanner.subscribe((plans) => this.renderMealPlanner(plans));
+
+        // Subscribe to agenda
+        Agenda.subscribe((items) => this.renderAgenda(items));
+
+        // Initialize meal categories defaults
+        await MealCategories.initializeDefaults();
+
+        // Initialize week start for planner
+        this.currentWeekStart = MealPlanner.getWeekStart();
 
         // Load calendar
         Calendar.loadSelectedCalendar();
@@ -130,10 +157,10 @@ const App = {
         const dueText = Tasks.formatDueDate(task);
 
         return `
-            <div class="task-item ${statusClass}" data-task-id="${task.id}">
+            <div class="task-item ${statusClass}" data-task-id="${esc(task.id)}">
                 <span class="task-checkbox">${task.completed ? '☑' : '☐'}</span>
-                <span class="task-title">${task.title}</span>
-                ${dueText ? `<span class="task-due">${dueText}</span>` : ''}
+                <span class="task-title">${esc(task.title)}</span>
+                ${dueText ? `<span class="task-due">${esc(dueText)}</span>` : ''}
             </div>
         `;
     },
@@ -154,6 +181,11 @@ const App = {
         // Household
         document.getElementById('create-household-btn')?.addEventListener('click', () => this.handleCreateHousehold());
         document.getElementById('join-household-btn')?.addEventListener('click', () => this.handleJoinHousehold());
+
+        // Household created modal
+        document.getElementById('household-created-continue')?.addEventListener('click', () => this.closeHouseholdCreatedModal());
+        document.getElementById('copy-new-invite-code')?.addEventListener('click', () => this.copyNewInviteCode());
+        document.getElementById('share-invite-code')?.addEventListener('click', () => this.shareInviteCode());
 
         // Navigation
         document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -197,6 +229,11 @@ const App = {
             document.getElementById('recurring-options').classList.toggle('hidden', !e.target.checked);
         });
 
+        // Agenda
+        document.getElementById('add-agenda-btn')?.addEventListener('click', () => this.openAgendaModal());
+        document.getElementById('agenda-form')?.addEventListener('submit', (e) => this.handleAgendaSubmit(e));
+        document.getElementById('clear-resolved-btn')?.addEventListener('click', () => this.clearResolvedAgenda());
+
         // Settings
         document.getElementById('settings-btn')?.addEventListener('click', () => this.openSettingsModal());
         document.getElementById('copy-invite-code')?.addEventListener('click', () => this.copyInviteCode());
@@ -226,6 +263,64 @@ const App = {
         // Calendar navigation
         document.getElementById('prev-month')?.addEventListener('click', () => this.navigateMonth(-1));
         document.getElementById('next-month')?.addEventListener('click', () => this.navigateMonth(1));
+
+        // Recipes
+        document.getElementById('add-recipe-btn')?.addEventListener('click', () => this.openRecipeModal());
+        document.getElementById('import-recipe-btn')?.addEventListener('click', () => this.openRecipeImportModal());
+        document.getElementById('recipe-form')?.addEventListener('submit', (e) => this.handleRecipeSubmit(e));
+        document.getElementById('add-ingredient-btn')?.addEventListener('click', () => this.addIngredientToList());
+        document.getElementById('new-ingredient')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); this.addIngredientToList(); }
+        });
+        document.getElementById('recipe-search')?.addEventListener('input', (e) => this.filterRecipes(e.target.value));
+
+        // Recipe import
+        document.getElementById('recipe-file-input')?.addEventListener('change', (e) => this.handleRecipeFileUpload(e));
+        document.getElementById('parse-recipe-text-btn')?.addEventListener('click', () => this.parseRecipeText());
+        document.getElementById('recipe-import-confirm-btn')?.addEventListener('click', () => this.confirmRecipeImport());
+        document.getElementById('recipe-import-edit-btn')?.addEventListener('click', () => this.editImportedRecipe());
+
+        // Recipe view modal actions
+        document.getElementById('recipe-favorite-btn')?.addEventListener('click', () => this.toggleRecipeFavorite());
+        document.getElementById('recipe-edit-btn')?.addEventListener('click', () => this.editCurrentRecipe());
+        document.getElementById('recipe-delete-btn')?.addEventListener('click', () => this.deleteCurrentRecipe());
+        document.getElementById('add-recipe-to-plan-btn')?.addEventListener('click', () => this.addRecipeToCurrentPlan());
+        document.getElementById('add-ingredients-to-shopping-btn')?.addEventListener('click', () => this.addRecipeIngredientsToShopping());
+
+        // Inventory
+        document.getElementById('add-inventory-btn')?.addEventListener('click', () => this.openInventoryModal());
+        document.getElementById('inventory-form')?.addEventListener('submit', (e) => this.handleInventorySubmit(e));
+        document.querySelectorAll('.location-tab').forEach(btn => {
+            btn.addEventListener('click', (e) => this.switchInventoryLocation(e.target.dataset.location));
+        });
+
+        // Meal Planner
+        document.getElementById('plan-week-btn')?.addEventListener('click', () => this.openPlannerWizard());
+        document.getElementById('prev-week')?.addEventListener('click', () => this.navigateWeek(-1));
+        document.getElementById('next-week')?.addEventListener('click', () => this.navigateWeek(1));
+        document.getElementById('add-to-shopping-btn')?.addEventListener('click', () => this.addPlanToShopping());
+
+        // Planner Wizard navigation
+        document.querySelectorAll('.wizard-next').forEach(btn => {
+            btn.addEventListener('click', () => this.wizardNext());
+        });
+        document.querySelectorAll('.wizard-back').forEach(btn => {
+            btn.addEventListener('click', () => this.wizardBack());
+        });
+        document.getElementById('regenerate-btn')?.addEventListener('click', () => this.regenerateSuggestions());
+        document.getElementById('accept-plan-btn')?.addEventListener('click', () => this.acceptMealPlan());
+
+        // Must-include search
+        document.getElementById('must-include-search')?.addEventListener('input', (e) => this.filterMustIncludeRecipes(e.target.value));
+
+        // Ingredient check modal
+        document.getElementById('ingredient-check-done-btn')?.addEventListener('click', () => this.finishIngredientCheck());
+
+        // Category management
+        document.getElementById('add-category-btn')?.addEventListener('click', () => this.addNewCategory());
+        document.getElementById('new-category-name')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); this.addNewCategory(); }
+        });
 
         // Modal close buttons
         document.querySelectorAll('.close-btn[data-close]').forEach(btn => {
@@ -260,6 +355,11 @@ const App = {
         await Auth.signOut();
         Tasks.unsubscribeFromUpdates();
         Locations.unsubscribeFromUpdates();
+        Recipes.unsubscribeFromUpdates();
+        Inventory.unsubscribeFromUpdates();
+        MealCategories.unsubscribeFromUpdates();
+        MealPlanner.unsubscribeFromUpdates();
+        Agenda.unsubscribeFromUpdates();
         this.showScreen('auth');
     },
 
@@ -269,9 +369,73 @@ const App = {
             await Household.create();
             await this.loadHousehold();
             this.showScreen('main');
-            this.showToast('Household created!');
+            // Show the invite code modal
+            this.showHouseholdCreatedModal();
         } catch (error) {
             this.showToast('Failed to create household: ' + error.message);
+        }
+    },
+
+    // Show household created modal with invite code
+    showHouseholdCreatedModal() {
+        const modal = document.getElementById('household-created-modal');
+        const inviteCodeEl = document.getElementById('new-household-invite-code');
+
+        if (modal && inviteCodeEl && Household.currentHousehold) {
+            inviteCodeEl.textContent = Household.currentHousehold.inviteCode;
+            modal.classList.remove('hidden');
+        }
+    },
+
+    // Close household created modal and continue
+    closeHouseholdCreatedModal() {
+        const modal = document.getElementById('household-created-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    },
+
+    // Copy new invite code to clipboard
+    async copyNewInviteCode() {
+        const code = Household.currentHousehold?.inviteCode;
+        if (code) {
+            try {
+                await navigator.clipboard.writeText(code);
+                this.showToast('Invite code copied!');
+            } catch (err) {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = code;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                this.showToast('Invite code copied!');
+            }
+        }
+    },
+
+    // Share invite code using Web Share API
+    async shareInviteCode() {
+        const code = Household.currentHousehold?.inviteCode;
+        const householdName = Household.currentHousehold?.name || 'My Household';
+
+        if (code && navigator.share) {
+            try {
+                await navigator.share({
+                    title: 'Join my Household6',
+                    text: `Join "${householdName}" on Household6! Use invite code: ${code}`,
+                    url: window.location.origin
+                });
+            } catch (err) {
+                // User cancelled or share failed
+                if (err.name !== 'AbortError') {
+                    this.copyNewInviteCode();
+                }
+            }
+        } else {
+            // Fallback to copy
+            this.copyNewInviteCode();
         }
     },
 
@@ -386,18 +550,18 @@ const App = {
                 <div class="label">Type</div>
                 <div class="value">Calendar Event</div>
                 <div class="label">Title</div>
-                <div class="value">${parsed.title || 'Untitled'}</div>
+                <div class="value">${esc(parsed.title) || 'Untitled'}</div>
                 <div class="label">When</div>
-                <div class="value">${parsed.date ? parsed.date.toLocaleString() : 'Not specified'}</div>
-                ${parsed.location ? `<div class="label">Location</div><div class="value">${parsed.location}</div>` : ''}
+                <div class="value">${parsed.date ? esc(parsed.date.toLocaleString()) : 'Not specified'}</div>
+                ${parsed.location ? `<div class="label">Location</div><div class="value">${esc(parsed.location)}</div>` : ''}
             `;
         } else {
             html = `
                 <div class="label">Type</div>
                 <div class="value">Task</div>
                 <div class="label">Title</div>
-                <div class="value">${parsed.title || 'Untitled'}</div>
-                ${parsed.recurring ? `<div class="label">Repeats</div><div class="value">${parsed.frequency}</div>` : ''}
+                <div class="value">${esc(parsed.title) || 'Untitled'}</div>
+                ${parsed.recurring ? `<div class="label">Repeats</div><div class="value">${esc(parsed.frequency)}</div>` : ''}
             `;
         }
 
@@ -527,7 +691,7 @@ const App = {
         // Update members list
         const membersList = document.getElementById('household-members');
         membersList.innerHTML = Household.members.map(member => `
-            <span class="member-chip">${member.displayName}</span>
+            <span class="member-chip">${esc(member.displayName)}</span>
         `).join('');
 
         // Check if calendar is connected (we have an access token)
@@ -561,14 +725,11 @@ const App = {
     },
 
     async handleConnectCalendar() {
-        console.log('Connect Calendar button clicked');
         try {
             this.showToast('Opening Google sign-in...');
 
             // Re-authenticate to get calendar permissions
-            console.log('Calling Auth.refreshAccessToken...');
             const accessToken = await Auth.refreshAccessToken();
-            console.log('Access token result:', accessToken ? 'received' : 'null');
 
             if (accessToken) {
                 this.showToast('Calendar connected!');
@@ -577,9 +738,7 @@ const App = {
                 document.getElementById('calendar-connected')?.classList.remove('hidden');
 
                 // Load calendars
-                console.log('Loading calendar list...');
                 const calendars = await Calendar.getCalendarList();
-                console.log('Calendars found:', calendars.length);
                 const calendarSelect = document.getElementById('calendar-select');
                 calendarSelect.innerHTML = '<option value="">Select a calendar...</option>';
                 calendars.forEach(cal => {
@@ -592,7 +751,7 @@ const App = {
                 this.showToast('Could not get calendar access.');
             }
         } catch (error) {
-            console.error('Calendar connect error:', error);
+            // Calendar connect error
             this.showToast('Error: ' + error.message);
         }
     },
@@ -616,14 +775,11 @@ const App = {
 
     // Text input handler
     async handleTextInput(text) {
-        console.log('handleTextInput called with:', text);
         try {
             // Show loading indicator
             this.showToast('Processing...');
 
-            console.log('Calling AI.parseInput...');
             const parsed = await AI.parseInput(text);
-            console.log('AI response:', parsed);
 
             if (parsed.items && parsed.items.length > 1) {
                 // Multiple items - show document preview modal
@@ -793,8 +949,8 @@ const App = {
                     <input type="checkbox" class="preview-item-checkbox" data-index="${index}" checked>
                     <span class="preview-item-icon">${icon}</span>
                     <div class="preview-item-details">
-                        <div class="preview-item-title">${item.title}</div>
-                        <div class="preview-item-meta">${meta}</div>
+                        <div class="preview-item-title">${esc(item.title)}</div>
+                        <div class="preview-item-meta">${esc(meta)}</div>
                     </div>
                 </div>
             `;
@@ -836,7 +992,7 @@ const App = {
                 if (result.action === 'taskCreated') tasksCreated++;
                 if (result.action === 'shoppingAdded') shoppingAdded++;
             } catch (error) {
-                console.error('Error creating item:', error);
+                // Error creating item
                 errors++;
             }
         }
@@ -907,7 +1063,7 @@ const App = {
             for (const [category, categoryItems] of Object.entries(grouped)) {
                 html += `
                     <div class="shopping-category">
-                        <h4 class="category-label">${category}</h4>
+                        <h4 class="category-label">${esc(category)}</h4>
                         ${categoryItems.map(item => this.renderShoppingItem(item)).join('')}
                     </div>
                 `;
@@ -939,9 +1095,9 @@ const App = {
     renderShoppingItem(item, isChecked = false) {
         const displayText = Shopping.formatItem(item);
         return `
-            <div class="shopping-item ${isChecked ? 'checked' : ''}" data-item-id="${item.id}">
+            <div class="shopping-item ${isChecked ? 'checked' : ''}" data-item-id="${esc(item.id)}">
                 <span class="shopping-checkbox">${isChecked ? '☑' : '☐'}</span>
-                <span class="shopping-name">${displayText}</span>
+                <span class="shopping-name">${esc(displayText)}</span>
             </div>
         `;
     },
@@ -1050,16 +1206,16 @@ const App = {
         const dueText = Tasks.formatDueDate(task);
 
         return `
-            <div class="task-item ${statusClass}" data-task-id="${task.id}" onclick="App.toggleTask('${task.id}')">
+            <div class="task-item ${statusClass}" data-task-id="${esc(task.id)}" onclick="App.toggleTask('${esc(task.id)}')">
                 <span class="task-checkbox">${task.completed ? '☑' : '☐'}</span>
                 <div class="task-details">
                     <div class="task-title">
-                        ${task.title}
+                        ${esc(task.title)}
                         ${task.recurring ? '<span class="task-recurring-badge">Recurring</span>' : ''}
                     </div>
-                    ${task.assignee ? `<div class="task-assignee">Assigned to ${Household.getMemberName(task.assignee)}</div>` : ''}
+                    ${task.assignee ? `<div class="task-assignee">Assigned to ${esc(Household.getMemberName(task.assignee))}</div>` : ''}
                 </div>
-                ${dueText ? `<span class="task-due">${dueText}</span>` : ''}
+                ${dueText ? `<span class="task-due">${esc(dueText)}</span>` : ''}
             </div>
         `;
     },
@@ -1090,10 +1246,10 @@ const App = {
 
         container.innerHTML = events.map(event => `
             <div class="event-item">
-                <div class="event-time">${Calendar.formatTime(event.startDate)}</div>
+                <div class="event-time">${esc(Calendar.formatTime(event.startDate))}</div>
                 <div class="event-details">
-                    <div class="event-title">${event.title}</div>
-                    ${event.location ? `<div class="event-location">📍 ${event.location}</div>` : ''}
+                    <div class="event-title">${esc(event.title)}</div>
+                    ${event.location ? `<div class="event-location">📍 ${esc(event.location)}</div>` : ''}
                 </div>
             </div>
         `).join('');
@@ -1111,10 +1267,10 @@ const App = {
         container.innerHTML = locations.map(loc => `
             <div class="location-item">
                 <div>
-                    <div class="location-name">${loc.name}</div>
-                    <div class="location-address">${loc.address}</div>
+                    <div class="location-name">${esc(loc.name)}</div>
+                    <div class="location-address">${esc(loc.address)}</div>
                 </div>
-                <button class="delete-btn" onclick="App.deleteLocation('${loc.id}')">&times;</button>
+                <button class="delete-btn" onclick="App.deleteLocation('${esc(loc.id)}')">&times;</button>
             </div>
         `).join('');
     },
@@ -1254,10 +1410,10 @@ const App = {
         } else {
             container.innerHTML = events.map(event => `
                 <div class="event-item">
-                    <div class="event-time">${event.allDay ? 'All day' : Calendar.formatTime(event.startDate)}</div>
+                    <div class="event-time">${event.allDay ? 'All day' : esc(Calendar.formatTime(event.startDate))}</div>
                     <div class="event-details">
-                        <div class="event-title">${event.title}</div>
-                        ${event.location ? `<div class="event-location">📍 ${event.location}</div>` : ''}
+                        <div class="event-title">${esc(event.title)}</div>
+                        ${event.location ? `<div class="event-location">📍 ${esc(event.location)}</div>` : ''}
                     </div>
                 </div>
             `).join('');
@@ -1293,12 +1449,12 @@ const App = {
                 <div class="upcoming-event-item">
                     <div class="upcoming-event-date">
                         <div class="day-num">${dayNum}</div>
-                        <div class="day-name">${dayName}</div>
+                        <div class="day-name">${esc(dayName)}</div>
                     </div>
                     <div class="upcoming-event-details">
-                        <div class="upcoming-event-title">${event.title}</div>
-                        <div class="upcoming-event-time">${timeStr}</div>
-                        ${event.location ? `<div class="upcoming-event-location">📍 ${event.location}</div>` : ''}
+                        <div class="upcoming-event-title">${esc(event.title)}</div>
+                        <div class="upcoming-event-time">${esc(timeStr)}</div>
+                        ${event.location ? `<div class="upcoming-event-location">📍 ${esc(event.location)}</div>` : ''}
                     </div>
                 </div>
             `;
@@ -1348,6 +1504,168 @@ const App = {
             Household.currentHousehold?.name || 'My Household';
     },
 
+    // ==================== AGENDA HANDLERS ====================
+
+    // Render agenda items
+    renderAgenda(items) {
+        const pendingContainer = document.getElementById('agenda-pending');
+        const resolvedContainer = document.getElementById('agenda-resolved');
+        const resolvedSection = document.getElementById('resolved-section');
+
+        if (!pendingContainer) return;
+
+        const pending = Agenda.getPending();
+        const resolved = Agenda.getResolved();
+
+        // Render pending items
+        if (pending.length === 0) {
+            pendingContainer.innerHTML = '<p class="empty-state">No agenda items. Add topics for your next meeting!</p>';
+        } else {
+            pendingContainer.innerHTML = pending.map(item => this.renderAgendaItem(item)).join('');
+            this.attachAgendaItemListeners(pendingContainer);
+        }
+
+        // Render resolved items
+        if (resolved.length > 0) {
+            resolvedSection.classList.remove('hidden');
+            resolvedContainer.innerHTML = resolved.map(item => this.renderAgendaItem(item)).join('');
+            this.attachAgendaItemListeners(resolvedContainer);
+        } else {
+            resolvedSection.classList.add('hidden');
+        }
+    },
+
+    // Render a single agenda item
+    renderAgendaItem(item) {
+        const priorityLabel = {
+            high: 'Urgent',
+            normal: 'Normal',
+            low: 'Low Priority'
+        };
+
+        return `
+            <div class="agenda-item priority-${item.priority} ${item.resolved ? 'resolved' : ''}" data-id="${esc(item.id)}">
+                <div class="agenda-item-header">
+                    <span class="agenda-item-topic">${esc(item.topic)}</span>
+                    <div class="agenda-item-actions">
+                        <button class="icon-btn agenda-resolve-btn" title="${item.resolved ? 'Reopen' : 'Mark Resolved'}">
+                            ${item.resolved ? '↩' : '✓'}
+                        </button>
+                        <button class="icon-btn agenda-edit-btn" title="Edit">✎</button>
+                        <button class="icon-btn agenda-delete-btn" title="Delete">×</button>
+                    </div>
+                </div>
+                ${item.description ? `<p class="agenda-item-description">${esc(item.description)}</p>` : ''}
+                <div class="agenda-item-meta">
+                    <span class="agenda-item-priority">${priorityLabel[item.priority]}</span>
+                    <span>Added by ${esc(item.addedByName)} · ${Agenda.formatDate(item.createdAt)}</span>
+                </div>
+            </div>
+        `;
+    },
+
+    // Attach event listeners to agenda items
+    attachAgendaItemListeners(container) {
+        container.querySelectorAll('.agenda-resolve-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const id = btn.closest('.agenda-item').dataset.id;
+                try {
+                    await Agenda.toggleResolved(id);
+                } catch (error) {
+                    this.showToast('Error: ' + error.message);
+                }
+            });
+        });
+
+        container.querySelectorAll('.agenda-edit-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const id = btn.closest('.agenda-item').dataset.id;
+                const item = Agenda.getById(id);
+                if (item) this.openAgendaModal(item);
+            });
+        });
+
+        container.querySelectorAll('.agenda-delete-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const id = btn.closest('.agenda-item').dataset.id;
+                if (confirm('Delete this agenda item?')) {
+                    try {
+                        await Agenda.delete(id);
+                        this.showToast('Item deleted');
+                    } catch (error) {
+                        this.showToast('Error: ' + error.message);
+                    }
+                }
+            });
+        });
+    },
+
+    // Open agenda modal
+    openAgendaModal(item = null) {
+        const modal = document.getElementById('agenda-modal');
+        const title = document.getElementById('agenda-modal-title');
+        const form = document.getElementById('agenda-form');
+
+        form.reset();
+        document.getElementById('agenda-edit-id').value = '';
+        document.getElementById('agenda-added-by').value = Auth.currentUser?.displayName || 'You';
+
+        if (item) {
+            title.textContent = 'Edit Agenda Item';
+            document.getElementById('agenda-topic').value = item.topic;
+            document.getElementById('agenda-description').value = item.description || '';
+            document.getElementById('agenda-priority').value = item.priority;
+            document.getElementById('agenda-edit-id').value = item.id;
+            document.getElementById('agenda-added-by').value = item.addedByName;
+        } else {
+            title.textContent = 'Add Agenda Item';
+        }
+
+        modal.classList.remove('hidden');
+    },
+
+    // Handle agenda form submission
+    async handleAgendaSubmit(e) {
+        e.preventDefault();
+
+        const itemData = {
+            topic: document.getElementById('agenda-topic').value.trim(),
+            description: document.getElementById('agenda-description').value.trim(),
+            priority: document.getElementById('agenda-priority').value
+        };
+
+        const editId = document.getElementById('agenda-edit-id').value;
+
+        try {
+            if (editId) {
+                await Agenda.update(editId, itemData);
+                this.showToast('Item updated');
+            } else {
+                await Agenda.create(itemData);
+                this.showToast('Item added to agenda');
+            }
+
+            document.getElementById('agenda-modal').classList.add('hidden');
+        } catch (error) {
+            this.showToast('Error: ' + error.message);
+        }
+    },
+
+    // Clear resolved agenda items
+    async clearResolvedAgenda() {
+        if (!confirm('Clear all resolved items?')) return;
+
+        try {
+            await Agenda.clearResolved();
+            this.showToast('Resolved items cleared');
+        } catch (error) {
+            this.showToast('Error: ' + error.message);
+        }
+    },
+
     // Toast notifications
     showToast(message, duration = 3000) {
         // Remove existing toast
@@ -1365,11 +1683,1176 @@ const App = {
     async registerServiceWorker() {
         if ('serviceWorker' in navigator) {
             try {
-                const registration = await navigator.serviceWorker.register('/sw.js');
-                console.log('Service Worker registered:', registration);
+                await navigator.serviceWorker.register('/sw.js');
+                // Service Worker registered successfully
             } catch (error) {
-                console.error('Service Worker registration failed:', error);
+                // Service Worker registration failed
             }
+        }
+
+        // Setup PWA install prompt
+        this.setupInstallPrompt();
+    },
+
+    // PWA Install Prompt
+    deferredPrompt: null,
+
+    setupInstallPrompt() {
+        // Check if already installed as PWA
+        if (window.matchMedia('(display-mode: standalone)').matches ||
+            window.navigator.standalone === true) {
+            // App is running as PWA
+            return;
+        }
+
+        // Check if user dismissed the prompt before
+        const dismissed = localStorage.getItem('pwa-install-dismissed');
+        if (dismissed && Date.now() - parseInt(dismissed) < 7 * 24 * 60 * 60 * 1000) {
+            // Don't show for 7 days after dismissal
+            return;
+        }
+
+        // Detect platform
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        const isAndroid = /Android/.test(navigator.userAgent);
+        const isChrome = /Chrome/.test(navigator.userAgent) && !/Edge|Edg/.test(navigator.userAgent);
+        const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+
+        if (isIOS) {
+            // iOS - show manual instructions (works for Safari and Chrome on iOS)
+            setTimeout(() => this.showIOSInstallPrompt(), 3000);
+        } else {
+            // Android/Desktop - use beforeinstallprompt
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                this.deferredPrompt = e;
+                setTimeout(() => this.showInstallBanner(), 2000);
+            });
+        }
+    },
+
+    showIOSInstallPrompt() {
+        const isChrome = /CriOS/.test(navigator.userAgent);
+        const isSafari = /Safari/.test(navigator.userAgent) && !/CriOS/.test(navigator.userAgent);
+
+        let instructions = '';
+        if (isChrome) {
+            // Chrome on iOS
+            instructions = `
+                <p><strong>Install Household6:</strong></p>
+                <ol>
+                    <li>Tap the <strong>Share</strong> button (box with arrow)</li>
+                    <li>Scroll down and tap <strong>"Add to Home Screen"</strong></li>
+                    <li>Tap <strong>"Add"</strong> to install</li>
+                </ol>
+                <p class="install-note">Note: For the best experience on iOS, use Safari</p>
+            `;
+        } else {
+            // Safari on iOS
+            instructions = `
+                <p><strong>Install Household6:</strong></p>
+                <ol>
+                    <li>Tap the <strong>Share</strong> button <span class="share-icon">⬆</span></li>
+                    <li>Scroll down and tap <strong>"Add to Home Screen"</strong></li>
+                    <li>Tap <strong>"Add"</strong> to install</li>
+                </ol>
+            `;
+        }
+
+        this.showInstallBannerWithContent(instructions, true);
+    },
+
+    showInstallBanner() {
+        const content = `
+            <p><strong>Install Household6</strong> for quick access and offline use!</p>
+            <div class="install-banner-actions">
+                <button id="install-btn" class="btn btn-primary btn-small">Install</button>
+                <button id="install-dismiss" class="btn btn-secondary btn-small">Not Now</button>
+            </div>
+        `;
+        this.showInstallBannerWithContent(content, false);
+    },
+
+    showInstallBannerWithContent(content, isIOS) {
+        // Remove existing banner
+        document.getElementById('install-banner')?.remove();
+
+        const banner = document.createElement('div');
+        banner.id = 'install-banner';
+        banner.className = 'install-banner';
+        banner.innerHTML = `
+            <button class="install-banner-close" id="install-close">&times;</button>
+            ${content}
+        `;
+        document.body.appendChild(banner);
+
+        // Event listeners
+        document.getElementById('install-close').addEventListener('click', () => {
+            this.dismissInstallBanner();
+        });
+
+        if (!isIOS) {
+            document.getElementById('install-btn')?.addEventListener('click', () => {
+                this.installPWA();
+            });
+            document.getElementById('install-dismiss')?.addEventListener('click', () => {
+                this.dismissInstallBanner();
+            });
+        }
+
+        // Auto-show with animation
+        setTimeout(() => banner.classList.add('show'), 100);
+    },
+
+    dismissInstallBanner() {
+        const banner = document.getElementById('install-banner');
+        if (banner) {
+            banner.classList.remove('show');
+            setTimeout(() => banner.remove(), 300);
+        }
+        localStorage.setItem('pwa-install-dismissed', Date.now().toString());
+    },
+
+    async installPWA() {
+        if (!this.deferredPrompt) return;
+
+        this.deferredPrompt.prompt();
+        const { outcome } = await this.deferredPrompt.userChoice;
+
+        // Install prompt completed
+        this.deferredPrompt = null;
+        this.dismissInstallBanner();
+
+        if (outcome === 'accepted') {
+            this.showToast('Installing Household6...');
+        }
+    },
+
+    // ==================== RECIPES ====================
+
+    renderRecipes(recipes) {
+        const container = document.getElementById('recipes-list');
+        if (!container) return;
+
+        if (recipes.length === 0) {
+            container.innerHTML = '<p class="empty-state">No recipes yet. Add your first recipe!</p>';
+            return;
+        }
+
+        const grouped = Recipes.getGroupedByCategory();
+        let html = '';
+
+        for (const [category, categoryRecipes] of Object.entries(grouped)) {
+            const color = MealCategories.getColor(category);
+            html += `
+                <div class="recipe-category-section">
+                    <h4 class="category-header" style="border-left-color: ${esc(color)}">${esc(category)} (${categoryRecipes.length})</h4>
+                    <div class="recipe-cards">
+                        ${categoryRecipes.map(recipe => this.renderRecipeCard(recipe)).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        container.innerHTML = html;
+
+        // Add click handlers
+        container.querySelectorAll('.recipe-card').forEach(card => {
+            card.addEventListener('click', () => this.openRecipeView(card.dataset.recipeId));
+        });
+    },
+
+    renderRecipeCard(recipe) {
+        const formatted = Recipes.formatRecipe(recipe);
+        return `
+            <div class="recipe-card" data-recipe-id="${esc(recipe.id)}">
+                <div class="recipe-card-header">
+                    <span class="recipe-card-name">${esc(recipe.name)}</span>
+                    ${recipe.favorite ? '<span class="favorite-badge">♥</span>' : ''}
+                </div>
+                <div class="recipe-card-meta">
+                    ${esc(formatted.timeDisplay || `${formatted.ingredientCount} ingredients`)}
+                </div>
+            </div>
+        `;
+    },
+
+    filterRecipes(query) {
+        const container = document.getElementById('recipes-list');
+        if (!query.trim()) {
+            this.renderRecipes(Recipes.recipes);
+            return;
+        }
+
+        const filtered = Recipes.search(query);
+        if (filtered.length === 0) {
+            container.innerHTML = '<p class="empty-state">No recipes match your search</p>';
+            return;
+        }
+
+        container.innerHTML = `
+            <div class="recipe-cards">
+                ${filtered.map(recipe => this.renderRecipeCard(recipe)).join('')}
+            </div>
+        `;
+
+        container.querySelectorAll('.recipe-card').forEach(card => {
+            card.addEventListener('click', () => this.openRecipeView(card.dataset.recipeId));
+        });
+    },
+
+    openRecipeModal(recipe = null) {
+        const modal = document.getElementById('recipe-modal');
+        const title = document.getElementById('recipe-modal-title');
+        const form = document.getElementById('recipe-form');
+
+        title.textContent = recipe ? 'Edit Recipe' : 'Add Recipe';
+        form.reset();
+        document.getElementById('ingredients-list').innerHTML = '';
+        document.getElementById('recipe-edit-id').value = '';
+
+        // Update category select
+        this.updateCategorySelects();
+
+        if (recipe) {
+            document.getElementById('recipe-name').value = recipe.name;
+            document.getElementById('recipe-category').value = recipe.category || 'Uncategorized';
+            document.getElementById('recipe-servings').value = recipe.servings || 4;
+            document.getElementById('recipe-prep-time').value = recipe.prepTime || '';
+            document.getElementById('recipe-cook-time').value = recipe.cookTime || '';
+            document.getElementById('recipe-instructions').value = recipe.instructions || '';
+            document.getElementById('recipe-source').value = recipe.sourceUrl || '';
+            document.getElementById('recipe-edit-id').value = recipe.id;
+
+            // Add existing ingredients
+            if (recipe.ingredients) {
+                recipe.ingredients.forEach(ing => this.addIngredientToList(ing));
+            }
+        }
+
+        modal.classList.remove('hidden');
+    },
+
+    updateCategorySelects() {
+        const selects = [
+            document.getElementById('recipe-category')
+        ];
+
+        selects.forEach(select => {
+            if (!select) return;
+            const currentValue = select.value;
+            select.innerHTML = '<option value="Uncategorized">Select category...</option>';
+            MealCategories.categories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat.name;
+                option.textContent = cat.name;
+                select.appendChild(option);
+            });
+            select.value = currentValue || 'Uncategorized';
+        });
+    },
+
+    addIngredientToList(ingredient = null) {
+        const input = document.getElementById('new-ingredient');
+        const list = document.getElementById('ingredients-list');
+
+        let ing;
+        if (ingredient) {
+            ing = ingredient;
+        } else if (input.value.trim()) {
+            ing = Recipes.parseIngredientString(input.value.trim());
+            input.value = '';
+        } else {
+            return;
+        }
+
+        const displayText = ing.quantity
+            ? `${ing.quantity}${ing.unit ? ' ' + ing.unit : ''} ${ing.name}`
+            : ing.name;
+
+        const item = document.createElement('div');
+        item.className = 'ingredient-item';
+        item.innerHTML = `
+            <span class="ingredient-text">${esc(displayText)}</span>
+            <button type="button" class="ingredient-remove" onclick="this.parentElement.remove()">&times;</button>
+        `;
+        item.dataset.ingredient = JSON.stringify(ing);
+
+        list.appendChild(item);
+        input.focus();
+    },
+
+    async handleRecipeSubmit(e) {
+        e.preventDefault();
+
+        const ingredientItems = document.querySelectorAll('#ingredients-list .ingredient-item');
+        const ingredients = Array.from(ingredientItems).map(item =>
+            JSON.parse(item.dataset.ingredient)
+        );
+
+        const recipeData = {
+            name: document.getElementById('recipe-name').value,
+            category: document.getElementById('recipe-category').value,
+            servings: parseInt(document.getElementById('recipe-servings').value) || 4,
+            prepTime: parseInt(document.getElementById('recipe-prep-time').value) || null,
+            cookTime: parseInt(document.getElementById('recipe-cook-time').value) || null,
+            ingredients,
+            instructions: document.getElementById('recipe-instructions').value,
+            sourceUrl: document.getElementById('recipe-source').value || null
+        };
+
+        const editId = document.getElementById('recipe-edit-id').value;
+
+        try {
+            if (editId) {
+                await Recipes.update(editId, recipeData);
+                this.showToast('Recipe updated');
+            } else {
+                await Recipes.create(recipeData);
+                this.showToast('Recipe saved');
+            }
+
+            document.getElementById('recipe-modal').classList.add('hidden');
+        } catch (error) {
+            this.showToast('Error: ' + error.message);
+        }
+    },
+
+    openRecipeImportModal() {
+        const modal = document.getElementById('recipe-import-modal');
+        document.getElementById('recipe-paste-text').value = '';
+        document.getElementById('recipe-import-loading').classList.add('hidden');
+        document.getElementById('recipe-import-preview').classList.add('hidden');
+        document.querySelector('.import-options').classList.remove('hidden');
+        this.parsedRecipeData = null;
+        modal.classList.remove('hidden');
+    },
+
+    async handleRecipeFileUpload(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        document.querySelector('.import-options').classList.add('hidden');
+        document.getElementById('recipe-import-loading').classList.remove('hidden');
+
+        try {
+            let parsed;
+            if (file.type.startsWith('image/')) {
+                parsed = await Recipes.parseFromImage(file);
+            } else {
+                const text = await this.extractTextFromFile(file);
+                parsed = await Recipes.parseFromText(text);
+            }
+
+            this.parsedRecipeData = parsed;
+            this.showParsedRecipePreview(parsed);
+        } catch (error) {
+            this.showToast('Error parsing recipe: ' + error.message);
+            document.getElementById('recipe-import-loading').classList.add('hidden');
+            document.querySelector('.import-options').classList.remove('hidden');
+        }
+
+        e.target.value = '';
+    },
+
+    async parseRecipeText() {
+        const text = document.getElementById('recipe-paste-text').value.trim();
+        if (!text) {
+            this.showToast('Please paste recipe text first');
+            return;
+        }
+
+        document.querySelector('.import-options').classList.add('hidden');
+        document.getElementById('recipe-import-loading').classList.remove('hidden');
+
+        try {
+            const parsed = await Recipes.parseFromText(text);
+            this.parsedRecipeData = parsed;
+            this.showParsedRecipePreview(parsed);
+        } catch (error) {
+            this.showToast('Error parsing recipe: ' + error.message);
+            document.getElementById('recipe-import-loading').classList.add('hidden');
+            document.querySelector('.import-options').classList.remove('hidden');
+        }
+    },
+
+    showParsedRecipePreview(recipe) {
+        document.getElementById('recipe-import-loading').classList.add('hidden');
+        document.getElementById('recipe-import-preview').classList.remove('hidden');
+
+        const preview = document.getElementById('parsed-recipe-preview');
+        preview.innerHTML = `
+            <div class="parsed-recipe-name">${esc(recipe.name)}</div>
+            <div class="parsed-recipe-meta">
+                ${recipe.servings ? `${esc(recipe.servings)} servings` : ''}
+                ${recipe.prepTime ? ` | Prep: ${esc(recipe.prepTime)} min` : ''}
+                ${recipe.cookTime ? ` | Cook: ${esc(recipe.cookTime)} min` : ''}
+            </div>
+            <div class="parsed-ingredients">
+                <strong>Ingredients (${recipe.ingredients.length}):</strong>
+                <ul>
+                    ${recipe.ingredients.slice(0, 8).map(ing =>
+                        `<li>${esc(ing.quantity || '')} ${esc(ing.unit || '')} ${esc(ing.name)}</li>`
+                    ).join('')}
+                    ${recipe.ingredients.length > 8 ? `<li>...and ${recipe.ingredients.length - 8} more</li>` : ''}
+                </ul>
+            </div>
+        `;
+    },
+
+    async confirmRecipeImport() {
+        if (!this.parsedRecipeData) return;
+
+        try {
+            await Recipes.create(this.parsedRecipeData);
+            this.showToast('Recipe imported!');
+            document.getElementById('recipe-import-modal').classList.add('hidden');
+            this.parsedRecipeData = null;
+        } catch (error) {
+            this.showToast('Error: ' + error.message);
+        }
+    },
+
+    editImportedRecipe() {
+        if (!this.parsedRecipeData) return;
+        document.getElementById('recipe-import-modal').classList.add('hidden');
+        this.openRecipeModal(this.parsedRecipeData);
+        this.parsedRecipeData = null;
+    },
+
+    openRecipeView(recipeId) {
+        const recipe = Recipes.recipes.find(r => r.id === recipeId);
+        if (!recipe) return;
+
+        this.currentRecipeId = recipeId;
+        const modal = document.getElementById('recipe-view-modal');
+
+        document.getElementById('recipe-view-name').textContent = recipe.name;
+        document.getElementById('recipe-view-category').textContent = recipe.category || 'Uncategorized';
+        document.getElementById('recipe-view-category').style.backgroundColor = MealCategories.getColor(recipe.category);
+
+        const timeDisplay = [];
+        if (recipe.prepTime) timeDisplay.push(`Prep: ${recipe.prepTime}min`);
+        if (recipe.cookTime) timeDisplay.push(`Cook: ${recipe.cookTime}min`);
+        document.getElementById('recipe-view-time').textContent = timeDisplay.join(' | ');
+
+        document.getElementById('recipe-view-servings').textContent = `(${recipe.servings || 4} servings)`;
+
+        // Ingredients
+        const ingredientsList = document.getElementById('recipe-view-ingredients');
+        ingredientsList.innerHTML = recipe.ingredients.map(ing => {
+            const text = ing.quantity
+                ? `${ing.quantity}${ing.unit ? ' ' + ing.unit : ''} ${ing.name}`
+                : ing.name;
+            return `<li>${esc(text)}</li>`;
+        }).join('');
+
+        // Instructions
+        document.getElementById('recipe-view-instructions').innerHTML =
+            recipe.instructions
+                ? recipe.instructions.split('\n').map(p => `<p>${esc(p)}</p>`).join('')
+                : '<p class="empty-state">No instructions</p>';
+
+        // Update favorite button
+        const favBtn = document.getElementById('recipe-favorite-btn');
+        favBtn.classList.toggle('favorited', recipe.favorite);
+
+        modal.classList.remove('hidden');
+    },
+
+    async toggleRecipeFavorite() {
+        if (!this.currentRecipeId) return;
+        try {
+            await Recipes.toggleFavorite(this.currentRecipeId);
+            const recipe = Recipes.recipes.find(r => r.id === this.currentRecipeId);
+            document.getElementById('recipe-favorite-btn').classList.toggle('favorited', recipe?.favorite);
+        } catch (error) {
+            this.showToast('Error: ' + error.message);
+        }
+    },
+
+    editCurrentRecipe() {
+        const recipe = Recipes.recipes.find(r => r.id === this.currentRecipeId);
+        if (!recipe) return;
+        document.getElementById('recipe-view-modal').classList.add('hidden');
+        this.openRecipeModal(recipe);
+    },
+
+    async deleteCurrentRecipe() {
+        if (!this.currentRecipeId) return;
+        if (!confirm('Delete this recipe?')) return;
+
+        try {
+            await Recipes.delete(this.currentRecipeId);
+            document.getElementById('recipe-view-modal').classList.add('hidden');
+            this.showToast('Recipe deleted');
+        } catch (error) {
+            this.showToast('Error: ' + error.message);
+        }
+    },
+
+    async addRecipeIngredientsToShopping() {
+        const recipe = Recipes.recipes.find(r => r.id === this.currentRecipeId);
+        if (!recipe) return;
+
+        // Open ingredient check modal
+        const ingredientsList = Inventory.checkRecipeIngredients(recipe.ingredients);
+        this.showIngredientCheckModal(ingredientsList, recipe.name);
+    },
+
+    showIngredientCheckModal(ingredients, recipeName) {
+        const modal = document.getElementById('ingredient-check-modal');
+        const container = document.getElementById('ingredient-checklist');
+        this.pendingIngredientCheck = ingredients;
+
+        container.innerHTML = ingredients.map((ing, idx) => {
+            const text = ing.quantity
+                ? `${ing.quantity}${ing.unit ? ' ' + ing.unit : ''} ${ing.name}`
+                : ing.name;
+            return `
+                <label class="ingredient-check-item ${ing.have ? 'has-item' : ''}">
+                    <input type="checkbox" data-index="${idx}" ${ing.have ? 'checked' : ''}>
+                    <span>${esc(text)}</span>
+                    ${ing.have ? '<span class="have-badge">In stock</span>' : ''}
+                </label>
+            `;
+        }).join('');
+
+        this.updateIngredientCheckCounts();
+
+        container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.addEventListener('change', () => this.updateIngredientCheckCounts());
+        });
+
+        modal.classList.remove('hidden');
+    },
+
+    updateIngredientCheckCounts() {
+        const checkboxes = document.querySelectorAll('#ingredient-checklist input[type="checkbox"]');
+        const haveCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+        const needCount = checkboxes.length - haveCount;
+        document.getElementById('have-count').textContent = haveCount;
+        document.getElementById('need-count').textContent = needCount;
+    },
+
+    async finishIngredientCheck() {
+        const checkboxes = document.querySelectorAll('#ingredient-checklist input[type="checkbox"]');
+        const missingItems = [];
+
+        checkboxes.forEach((cb, idx) => {
+            if (!cb.checked && this.pendingIngredientCheck[idx]) {
+                missingItems.push(this.pendingIngredientCheck[idx]);
+            }
+        });
+
+        if (missingItems.length === 0) {
+            this.showToast('You have all ingredients!');
+        } else {
+            for (const item of missingItems) {
+                await Shopping.add({
+                    name: item.name,
+                    quantity: item.quantity,
+                    unit: item.unit,
+                    category: item.category || Inventory.guessCategory(item.name)
+                });
+            }
+            this.showToast(`Added ${missingItems.length} items to shopping list`);
+        }
+
+        document.getElementById('ingredient-check-modal').classList.add('hidden');
+        document.getElementById('recipe-view-modal').classList.add('hidden');
+    },
+
+    // ==================== INVENTORY ====================
+
+    renderInventory(items) {
+        const container = document.getElementById('inventory-list');
+        const expiringSection = document.getElementById('expiring-section');
+        const expiringContainer = document.getElementById('expiring-items');
+        if (!container) return;
+
+        // Filter by current location
+        const locationItems = items.filter(i => i.location === this.currentInventoryLocation);
+
+        // Get expiring items (within 7 days) for current location
+        const expiringSoon = Inventory.getExpiringSoon(7).filter(i => i.location === this.currentInventoryLocation);
+
+        // Show expiring section if there are items
+        if (expiringSoon.length > 0) {
+            expiringSection.classList.remove('hidden');
+            expiringContainer.innerHTML = expiringSoon.map(item => this.renderInventoryItem(item, true)).join('');
+            expiringContainer.querySelectorAll('.inventory-item').forEach(el => {
+                el.addEventListener('click', () => this.openInventoryModal(Inventory.items.find(i => i.id === el.dataset.itemId)));
+            });
+        } else {
+            expiringSection.classList.add('hidden');
+        }
+
+        // Render all items for this location
+        if (locationItems.length === 0) {
+            container.innerHTML = `<p class="empty-state">No items in ${esc(this.currentInventoryLocation.toLowerCase())}</p>`;
+            return;
+        }
+
+        container.innerHTML = locationItems.map(item => this.renderInventoryItem(item)).join('');
+
+        container.querySelectorAll('.inventory-item').forEach(el => {
+            el.addEventListener('click', () => this.openInventoryModal(Inventory.items.find(i => i.id === el.dataset.itemId)));
+        });
+    },
+
+    renderInventoryItem(item, showExpiry = false) {
+        const expiryInfo = Inventory.formatExpiry(item);
+        const days = Inventory.getDaysUntilExpiry(item);
+        const expiryClass = days !== null && days <= 3 ? 'expiry-urgent' : (days !== null && days <= 7 ? 'expiry-soon' : '');
+
+        return `
+            <div class="inventory-item ${expiryClass}" data-item-id="${esc(item.id)}">
+                <div class="inventory-item-info">
+                    <span class="inventory-item-name">${esc(Inventory.formatItem(item))}</span>
+                    ${expiryInfo && showExpiry ? `<span class="inventory-item-expiry">${esc(expiryInfo)}</span>` : ''}
+                </div>
+                <button class="inventory-use-btn" onclick="event.stopPropagation(); App.useInventoryItem('${esc(item.id)}')">Use</button>
+            </div>
+        `;
+    },
+
+    switchInventoryLocation(location) {
+        this.currentInventoryLocation = location;
+        document.querySelectorAll('.location-tab').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.location === location);
+        });
+        this.renderInventory(Inventory.items);
+    },
+
+    openInventoryModal(item = null) {
+        const modal = document.getElementById('inventory-modal');
+        const title = document.getElementById('inventory-modal-title');
+        const form = document.getElementById('inventory-form');
+
+        title.textContent = item ? 'Edit Item' : 'Add to Inventory';
+        form.reset();
+        document.getElementById('inventory-edit-id').value = '';
+        document.getElementById('inventory-location').value = this.currentInventoryLocation;
+
+        if (item) {
+            document.getElementById('inventory-name').value = item.name;
+            document.getElementById('inventory-quantity').value = item.quantity || 1;
+            document.getElementById('inventory-unit').value = item.unit || '';
+            document.getElementById('inventory-location').value = item.location || 'Refrigerator';
+            document.getElementById('inventory-expiration').value = item.expirationDate || '';
+            document.getElementById('inventory-notes').value = item.notes || '';
+            document.getElementById('inventory-edit-id').value = item.id;
+        }
+
+        modal.classList.remove('hidden');
+    },
+
+    async handleInventorySubmit(e) {
+        e.preventDefault();
+
+        const itemData = {
+            name: document.getElementById('inventory-name').value,
+            quantity: parseFloat(document.getElementById('inventory-quantity').value) || 1,
+            unit: document.getElementById('inventory-unit').value || null,
+            location: document.getElementById('inventory-location').value,
+            expirationDate: document.getElementById('inventory-expiration').value || null,
+            notes: document.getElementById('inventory-notes').value || null
+        };
+
+        const editId = document.getElementById('inventory-edit-id').value;
+
+        try {
+            if (editId) {
+                await Inventory.update(editId, itemData);
+                this.showToast('Item updated');
+            } else {
+                await Inventory.add(itemData);
+                this.showToast('Item added to inventory');
+            }
+
+            document.getElementById('inventory-modal').classList.add('hidden');
+        } catch (error) {
+            this.showToast('Error: ' + error.message);
+        }
+    },
+
+    async useInventoryItem(itemId) {
+        try {
+            const result = await Inventory.useItem(itemId, 1);
+            if (result === null) {
+                this.showToast('Item removed from inventory');
+            } else {
+                this.showToast(`Updated: ${result.quantity} remaining`);
+            }
+        } catch (error) {
+            this.showToast('Error: ' + error.message);
+        }
+    },
+
+    // ==================== MEAL PLANNER ====================
+
+    renderMealPlanner(plans) {
+        const container = document.getElementById('meal-plan-view');
+        const weekRange = document.getElementById('week-range');
+        const groceryPreview = document.getElementById('grocery-preview');
+        if (!container) return;
+
+        // Update week range display
+        const weekDates = MealPlanner.getWeekDates(this.currentWeekStart);
+        const startDate = new Date(this.currentWeekStart);
+        const endDate = new Date(this.currentWeekStart);
+        endDate.setDate(endDate.getDate() + 6);
+
+        const formatOpts = { month: 'short', day: 'numeric' };
+        weekRange.textContent = `${startDate.toLocaleDateString('en-US', formatOpts)} - ${endDate.toLocaleDateString('en-US', formatOpts)}`;
+
+        // Find plan for current week
+        const plan = MealPlanner.getPlanForWeek(this.currentWeekStart);
+
+        if (!plan) {
+            container.innerHTML = '<p class="empty-state">No meals planned. Tap "Plan Week" to get started!</p>';
+            groceryPreview.classList.add('hidden');
+            return;
+        }
+
+        // Render week view
+        const planDisplay = MealPlanner.formatPlanForDisplay(plan.id);
+        container.innerHTML = planDisplay.map(day => {
+            const dayClass = day.isToday ? 'meal-day today' : 'meal-day';
+            return `
+                <div class="${dayClass}" data-date="${esc(day.date)}">
+                    <div class="meal-day-header">
+                        <span class="meal-day-name">${esc(day.dayName)}</span>
+                        <span class="meal-day-num">${esc(day.dayNum)}</span>
+                    </div>
+                    <div class="meal-day-content" onclick="App.changeMeal('${esc(plan.id)}', '${esc(day.date)}')">
+                        ${day.recipe
+                            ? `<span class="meal-recipe-name">${esc(day.recipe.name)}</span>`
+                            : '<span class="meal-empty">+ Add meal</span>'
+                        }
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Show grocery preview
+        this.updateGroceryPreview(plan.id);
+    },
+
+    updateGroceryPreview(planId) {
+        const groceryPreview = document.getElementById('grocery-preview');
+        const groceryList = document.getElementById('grocery-preview-list');
+
+        const items = MealPlanner.generateGroceryList(planId);
+        const needToBuy = items.filter(i => i.needToBuy);
+
+        if (needToBuy.length === 0) {
+            groceryPreview.classList.add('hidden');
+            return;
+        }
+
+        groceryPreview.classList.remove('hidden');
+        groceryList.innerHTML = needToBuy.slice(0, 10).map(item => `
+            <div class="grocery-preview-item">
+                <span>${esc(item.name)}</span>
+                <span class="grocery-preview-qty">${esc(item.quantity || '')} ${esc(item.unit || '')}</span>
+            </div>
+        `).join('') + (needToBuy.length > 10 ? `<div class="grocery-preview-more">+${needToBuy.length - 10} more items</div>` : '');
+    },
+
+    navigateWeek(delta) {
+        const newStart = new Date(this.currentWeekStart);
+        newStart.setDate(newStart.getDate() + (delta * 7));
+        this.currentWeekStart = newStart;
+        this.renderMealPlanner(MealPlanner.plans);
+    },
+
+    async changeMeal(planId, dateStr) {
+        // Open recipe select modal
+        this.pendingMealChange = { planId, dateStr };
+        const modal = document.getElementById('recipe-select-modal');
+        const list = document.getElementById('recipe-select-list');
+
+        list.innerHTML = Recipes.recipes.map(recipe => `
+            <div class="recipe-select-item" data-recipe-id="${esc(recipe.id)}">
+                <span class="recipe-select-name">${esc(recipe.name)}</span>
+                <span class="recipe-select-category">${esc(recipe.category)}</span>
+            </div>
+        `).join('') + `
+            <div class="recipe-select-item recipe-select-none" data-recipe-id="">
+                <span class="recipe-select-name">No meal</span>
+            </div>
+        `;
+
+        list.querySelectorAll('.recipe-select-item').forEach(item => {
+            item.addEventListener('click', () => this.selectMealRecipe(item.dataset.recipeId));
+        });
+
+        modal.classList.remove('hidden');
+    },
+
+    async selectMealRecipe(recipeId) {
+        if (!this.pendingMealChange) return;
+
+        const { planId, dateStr } = this.pendingMealChange;
+
+        try {
+            if (recipeId) {
+                await MealPlanner.setMeal(planId, dateStr, recipeId);
+            } else {
+                await MealPlanner.removeMeal(planId, dateStr);
+            }
+            document.getElementById('recipe-select-modal').classList.add('hidden');
+        } catch (error) {
+            this.showToast('Error: ' + error.message);
+        }
+
+        this.pendingMealChange = null;
+    },
+
+    async addPlanToShopping() {
+        const plan = MealPlanner.getPlanForWeek(this.currentWeekStart);
+        if (!plan) return;
+
+        const items = MealPlanner.generateGroceryList(plan.id);
+        const count = await MealPlanner.addToShoppingList(items, true);
+        this.showToast(`Added ${count} items to shopping list`);
+    },
+
+    // ==================== PLANNER WIZARD ====================
+
+    openPlannerWizard() {
+        const modal = document.getElementById('planner-wizard-modal');
+        this.wizardStep = 1;
+        this.wizardData = {
+            daysNeeded: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+            useUpItems: [],
+            categoryRequirements: {},
+            mustInclude: [],
+            suggestions: []
+        };
+
+        // Reset wizard UI
+        this.showWizardStep(1);
+
+        // Populate step 2 with expiring items
+        this.populateUseUpItems();
+
+        // Populate step 3 with categories
+        this.populateCategoryRequirements();
+
+        // Populate step 4 with recipes
+        this.populateMustIncludeRecipes();
+
+        modal.classList.remove('hidden');
+    },
+
+    showWizardStep(step) {
+        document.querySelectorAll('.wizard-panel').forEach(panel => {
+            panel.classList.toggle('active', panel.id === `wizard-step-${step}`);
+            panel.classList.toggle('hidden', panel.id !== `wizard-step-${step}`);
+        });
+
+        document.querySelectorAll('.wizard-step').forEach(dot => {
+            const dotStep = parseInt(dot.dataset.step);
+            dot.classList.toggle('active', dotStep <= step);
+            dot.classList.toggle('completed', dotStep < step);
+        });
+    },
+
+    wizardNext() {
+        // Collect data from current step
+        if (this.wizardStep === 1) {
+            const checkboxes = document.querySelectorAll('.day-checkbox input:checked');
+            this.wizardData.daysNeeded = Array.from(checkboxes).map(cb => cb.value);
+        } else if (this.wizardStep === 2) {
+            const checkboxes = document.querySelectorAll('#use-up-items input:checked');
+            this.wizardData.useUpItems = Array.from(checkboxes).map(cb => cb.value);
+        } else if (this.wizardStep === 3) {
+            const inputs = document.querySelectorAll('.category-requirement-input');
+            this.wizardData.categoryRequirements = {};
+            inputs.forEach(input => {
+                const val = parseInt(input.value) || 0;
+                if (val > 0) {
+                    this.wizardData.categoryRequirements[input.dataset.category] = val;
+                }
+            });
+        } else if (this.wizardStep === 4) {
+            // Generate suggestions
+            this.generateMealSuggestions();
+        }
+
+        if (this.wizardStep < 5) {
+            this.wizardStep++;
+            this.showWizardStep(this.wizardStep);
+        }
+    },
+
+    wizardBack() {
+        if (this.wizardStep > 1) {
+            this.wizardStep--;
+            this.showWizardStep(this.wizardStep);
+        }
+    },
+
+    populateUseUpItems() {
+        const container = document.getElementById('use-up-items');
+        const expiring = Inventory.getExpiringSoon(14);
+
+        if (expiring.length === 0) {
+            container.innerHTML = '<p class="empty-state">No items expiring soon</p>';
+            return;
+        }
+
+        container.innerHTML = expiring.map(item => {
+            const expiryText = Inventory.formatExpiry(item);
+            return `
+                <label class="checklist-item">
+                    <input type="checkbox" value="${esc(item.id)}">
+                    <span>${esc(item.name)}</span>
+                    <span class="expiry-hint">${esc(expiryText)}</span>
+                </label>
+            `;
+        }).join('');
+    },
+
+    populateCategoryRequirements() {
+        const container = document.getElementById('category-requirements');
+
+        container.innerHTML = MealCategories.categories.map(cat => `
+            <div class="category-requirement-row">
+                <span class="category-name" style="border-left-color: ${esc(cat.color)}">${esc(cat.name)}</span>
+                <input type="number" class="category-requirement-input" data-category="${esc(cat.name)}" value="0" min="0" max="7">
+            </div>
+        `).join('');
+    },
+
+    populateMustIncludeRecipes(filter = '') {
+        const container = document.getElementById('must-include-list');
+
+        let recipes = Recipes.recipes;
+        if (filter) {
+            recipes = Recipes.search(filter);
+        }
+
+        container.innerHTML = recipes.slice(0, 20).map(recipe => `
+            <div class="recipe-select-item" data-recipe-id="${esc(recipe.id)}" onclick="App.toggleMustInclude('${esc(recipe.id)}')">
+                <span class="recipe-select-name">${esc(recipe.name)}</span>
+                <span class="recipe-select-category">${esc(recipe.category)}</span>
+                ${this.wizardData.mustInclude.includes(recipe.id) ? '<span class="selected-check">✓</span>' : ''}
+            </div>
+        `).join('');
+
+        this.updateMustIncludeSelection();
+    },
+
+    filterMustIncludeRecipes(query) {
+        this.populateMustIncludeRecipes(query);
+    },
+
+    toggleMustInclude(recipeId) {
+        const idx = this.wizardData.mustInclude.indexOf(recipeId);
+        if (idx === -1) {
+            this.wizardData.mustInclude.push(recipeId);
+        } else {
+            this.wizardData.mustInclude.splice(idx, 1);
+        }
+        this.populateMustIncludeRecipes(document.getElementById('must-include-search')?.value || '');
+        this.updateMustIncludeSelection();
+    },
+
+    updateMustIncludeSelection() {
+        const container = document.getElementById('must-include-selected-list');
+        const section = document.getElementById('selected-must-include');
+
+        if (this.wizardData.mustInclude.length === 0) {
+            section.classList.add('hidden');
+            return;
+        }
+
+        section.classList.remove('hidden');
+        container.innerHTML = this.wizardData.mustInclude.map(id => {
+            const recipe = Recipes.recipes.find(r => r.id === id);
+            return recipe ? `<span class="selected-recipe-chip">${esc(recipe.name)} <button onclick="App.toggleMustInclude('${esc(id)}')">&times;</button></span>` : '';
+        }).join('');
+    },
+
+    generateMealSuggestions() {
+        const result = MealPlanner.generateWeekSuggestions({
+            daysNeeded: this.wizardData.daysNeeded,
+            mustInclude: this.wizardData.mustInclude,
+            categoryRequirements: this.wizardData.categoryRequirements,
+            useUpItems: this.wizardData.useUpItems
+        });
+
+        this.wizardData.suggestions = result.suggestions;
+        this.renderMealSuggestions(result);
+    },
+
+    regenerateSuggestions() {
+        this.generateMealSuggestions();
+    },
+
+    renderMealSuggestions(result) {
+        const container = document.getElementById('meal-suggestions');
+        const statsContainer = document.getElementById('suggestion-stats');
+
+        container.innerHTML = result.suggestions.map((suggestion, idx) => `
+            <div class="meal-suggestion ${suggestion.locked ? 'locked' : ''}" data-index="${idx}">
+                <div class="suggestion-day">${esc(suggestion.day)}</div>
+                <div class="suggestion-content">
+                    ${suggestion.recipe
+                        ? `<span class="suggestion-recipe">${esc(suggestion.recipe.name)}</span>
+                           <span class="suggestion-reason">${esc(suggestion.reason)}</span>
+                           ${suggestion.recipe.inventoryMatch
+                               ? `<span class="match-badge">${esc(suggestion.recipe.inventoryMatch.percentage)}% match</span>`
+                               : ''
+                           }`
+                        : '<span class="suggestion-empty">No suggestion</span>'
+                    }
+                </div>
+                <div class="suggestion-actions">
+                    <button class="icon-btn swap-btn" onclick="App.swapSuggestion(${idx})" title="Swap">↻</button>
+                    <button class="icon-btn lock-btn ${suggestion.locked ? 'active' : ''}" onclick="App.toggleSuggestionLock(${idx})" title="Lock">🔒</button>
+                </div>
+            </div>
+        `).join('');
+
+        // Stats
+        const totalMeals = result.suggestions.filter(s => s.recipe).length;
+        const catMet = result.fulfilled ? 'met' : 'not met';
+        statsContainer.innerHTML = `
+            <span>${totalMeals} meals planned</span>
+            <span>Category requirements: ${catMet}</span>
+        `;
+    },
+
+    async swapSuggestion(index) {
+        // Get alternatives or open recipe selector
+        const modal = document.getElementById('recipe-select-modal');
+        const list = document.getElementById('recipe-select-list');
+        this.pendingSuggestionSwap = index;
+
+        // Get suggestions excluding already planned recipes
+        const usedIds = this.wizardData.suggestions.map(s => s.recipe?.id).filter(Boolean);
+        const suggestions = MealPlanner.getSuggestions({
+            useUpItems: this.wizardData.useUpItems,
+            categoryRequirements: this.wizardData.categoryRequirements,
+            exclude: usedIds,
+            maxResults: 15
+        });
+
+        list.innerHTML = suggestions.map(recipe => `
+            <div class="recipe-select-item" data-recipe-id="${esc(recipe.id)}">
+                <span class="recipe-select-name">${esc(recipe.name)}</span>
+                <span class="recipe-select-meta">${esc(recipe.inventoryMatch.percentage)}% ingredients | ${esc(recipe.category)}</span>
+            </div>
+        `).join('');
+
+        list.querySelectorAll('.recipe-select-item').forEach(item => {
+            item.addEventListener('click', () => this.confirmSwapSuggestion(item.dataset.recipeId));
+        });
+
+        modal.classList.remove('hidden');
+    },
+
+    confirmSwapSuggestion(recipeId) {
+        const recipe = Recipes.recipes.find(r => r.id === recipeId);
+        if (recipe && this.pendingSuggestionSwap !== null) {
+            this.wizardData.suggestions = MealPlanner.swapSuggestion(
+                this.wizardData.suggestions,
+                this.pendingSuggestionSwap,
+                recipe
+            );
+            this.renderMealSuggestions({ suggestions: this.wizardData.suggestions, fulfilled: true });
+        }
+        document.getElementById('recipe-select-modal').classList.add('hidden');
+        this.pendingSuggestionSwap = null;
+    },
+
+    toggleSuggestionLock(index) {
+        this.wizardData.suggestions = MealPlanner.toggleLock(this.wizardData.suggestions, index);
+        this.renderMealSuggestions({ suggestions: this.wizardData.suggestions, fulfilled: true });
+    },
+
+    async acceptMealPlan() {
+        try {
+            // Create the meal plan
+            const meals = {};
+            const weekDates = MealPlanner.getWeekDates(this.currentWeekStart);
+
+            this.wizardData.suggestions.forEach((suggestion, idx) => {
+                if (suggestion.recipe) {
+                    const dateStr = weekDates[idx]?.date;
+                    if (dateStr) {
+                        meals[dateStr] = {
+                            recipeId: suggestion.recipe.id,
+                            mealType: 'dinner'
+                        };
+                    }
+                }
+            });
+
+            await MealPlanner.createPlan({
+                weekStart: this.currentWeekStart,
+                meals,
+                mealsNeeded: this.wizardData.daysNeeded.length,
+                daysNeeded: this.wizardData.daysNeeded,
+                mustIncludeRecipes: this.wizardData.mustInclude,
+                categoryRequirements: this.wizardData.categoryRequirements,
+                useUpItems: this.wizardData.useUpItems
+            });
+
+            document.getElementById('planner-wizard-modal').classList.add('hidden');
+            this.showToast('Meal plan created!');
+
+            // Show ingredient check
+            const groceryList = MealPlanner.generateGroceryListFromSuggestions(this.wizardData.suggestions);
+            if (groceryList.length > 0) {
+                this.showIngredientCheckModal(groceryList, 'Week\'s meals');
+            }
+
+        } catch (error) {
+            this.showToast('Error: ' + error.message);
+        }
+    },
+
+    addRecipeToCurrentPlan() {
+        if (!this.currentRecipeId) return;
+
+        const plan = MealPlanner.getPlanForWeek(this.currentWeekStart);
+        if (!plan) {
+            this.showToast('Create a meal plan first');
+            return;
+        }
+
+        // Find first empty day
+        const weekDates = MealPlanner.getWeekDates(this.currentWeekStart);
+        const emptyDay = weekDates.find(d => !plan.meals[d.date]);
+
+        if (emptyDay) {
+            MealPlanner.setMeal(plan.id, emptyDay.date, this.currentRecipeId);
+            document.getElementById('recipe-view-modal').classList.add('hidden');
+            this.showToast('Added to meal plan');
+        } else {
+            this.showToast('No empty days in current plan');
+        }
+    },
+
+    // Category management
+    async addNewCategory() {
+        const input = document.getElementById('new-category-name');
+        const name = input.value.trim();
+
+        if (!name) return;
+
+        try {
+            await MealCategories.create(name);
+            input.value = '';
+            this.showToast('Category added');
+        } catch (error) {
+            this.showToast('Error: ' + error.message);
         }
     }
 };

@@ -15,7 +15,7 @@ const Voice = {
     // Initialize speech recognition
     init() {
         if (!this.isSupported()) {
-            console.warn('Speech recognition not supported');
+            // Speech recognition not supported
             return false;
         }
 
@@ -52,7 +52,7 @@ const Voice = {
         };
 
         this.recognition.onerror = (event) => {
-            console.error('Speech recognition error:', event.error);
+            // Speech recognition error handled by callback
             this.isListening = false;
             if (this.onError) {
                 this.onError(event.error);
@@ -79,7 +79,7 @@ const Voice = {
             this.recognition.start();
             return true;
         } catch (error) {
-            console.error('Failed to start recognition:', error);
+            // Failed to start recognition
             return false;
         }
     },
@@ -96,12 +96,12 @@ const Voice = {
         // Try AI parsing first if Gemini is configured
         if (typeof Gemini !== 'undefined' && Gemini.isConfigured()) {
             try {
-                console.log('Parsing with Gemini AI...');
+                // Parsing with AI
                 const aiResult = await Gemini.parseVoiceInput(text);
-                console.log('Gemini result:', aiResult);
+                // AI parsing complete
                 return aiResult;
             } catch (error) {
-                console.warn('Gemini parsing failed, falling back to regex:', error);
+                // AI parsing failed, falling back to regex
                 // Fall through to regex parsing
             }
         }
@@ -266,7 +266,7 @@ const Voice = {
         // Shopping list items
         if (parsed.type === 'shopping') {
             if (!parsed.title) {
-                console.warn('Shopping item skipped - no title:', parsed);
+                // Shopping item skipped - no title
                 return { action: 'skipped', reason: 'no title' };
             }
             const item = await Shopping.add({
@@ -280,7 +280,7 @@ const Voice = {
 
         if (parsed.type === 'event' && parsed.date) {
             if (!parsed.title) {
-                console.warn('Event creation skipped - no title:', parsed);
+                // Event creation skipped - no title
                 return { action: 'skipped', reason: 'no title' };
             }
 
@@ -314,7 +314,7 @@ const Voice = {
         if (parsed.type === 'todo' || parsed.type === 'task' || !parsed.date) {
             // Ensure we have a title
             if (!parsed.title) {
-                console.warn('Task creation skipped - no title:', parsed);
+                // Task creation skipped - no title
                 return { action: 'skipped', reason: 'no title' };
             }
 

@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com https://cdnjs.cloudflare.com https://*.firebaseapp.com https://*.googleapis.com 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://*.cloudfunctions.net https://*.workers.dev wss://*.firebaseio.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; frame-src https://*.firebaseapp.com https://accounts.google.com;">
     <meta name="theme-color" content="#7D9B8C">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -31,6 +32,7 @@
                     </svg>
                     Sign in with Google
                 </button>
+                <p class="auth-legal">By signing in, you agree to our <a href="terms.html">Terms of Service</a> and <a href="privacy.html">Privacy Policy</a></p>
             </div>
         </div>
 
@@ -88,10 +90,14 @@
             </div>
 
             <!-- Tab Navigation -->
-            <nav class="tab-nav">
+            <nav class="tab-nav tab-nav-scrollable">
                 <button class="tab-btn active" data-tab="today">Today</button>
                 <button class="tab-btn" data-tab="tasks">Tasks</button>
                 <button class="tab-btn" data-tab="shopping">Shopping</button>
+                <button class="tab-btn" data-tab="agenda">Agenda</button>
+                <button class="tab-btn" data-tab="recipes">Recipes</button>
+                <button class="tab-btn" data-tab="inventory">Inventory</button>
+                <button class="tab-btn" data-tab="planner">Planner</button>
                 <button class="tab-btn" data-tab="calendar">Calendar</button>
             </nav>
 
@@ -136,6 +142,86 @@
                     <div id="checked-items" class="checked-items hidden">
                         <h4 class="section-label checked-label">Checked Off</h4>
                         <div id="checked-items-list"></div>
+                    </div>
+                </div>
+
+                <!-- Agenda Tab -->
+                <div id="agenda-tab" class="tab-panel hidden">
+                    <div class="agenda-header">
+                        <h3>Household Meeting Agenda</h3>
+                        <button id="add-agenda-btn" class="btn btn-small">+ Add Item</button>
+                    </div>
+                    <p class="agenda-description">Items to discuss at your next family meeting</p>
+                    <div id="agenda-sections">
+                        <div class="agenda-section">
+                            <h4 class="section-label">To Discuss</h4>
+                            <div id="agenda-pending" class="agenda-list">
+                                <p class="empty-state">No agenda items. Add topics for your next meeting!</p>
+                            </div>
+                        </div>
+                        <div class="agenda-section resolved-section hidden" id="resolved-section">
+                            <h4 class="section-label resolved-label">Resolved</h4>
+                            <div id="agenda-resolved" class="agenda-list resolved-list"></div>
+                            <button id="clear-resolved-btn" class="btn btn-small btn-secondary">Clear Resolved</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recipes Tab -->
+                <div id="recipes-tab" class="tab-panel hidden">
+                    <div class="recipes-header">
+                        <h3>Recipes</h3>
+                        <div class="header-actions">
+                            <button id="import-recipe-btn" class="btn btn-small btn-secondary">Import</button>
+                            <button id="add-recipe-btn" class="btn btn-small">+ Add</button>
+                        </div>
+                    </div>
+                    <div class="search-bar">
+                        <input type="text" id="recipe-search" placeholder="Search recipes..." autocomplete="off">
+                    </div>
+                    <div id="recipes-list" class="recipes-list">
+                        <p class="empty-state">No recipes yet. Add your first recipe!</p>
+                    </div>
+                </div>
+
+                <!-- Inventory Tab -->
+                <div id="inventory-tab" class="tab-panel hidden">
+                    <div class="inventory-header">
+                        <h3>Inventory</h3>
+                        <button id="add-inventory-btn" class="btn btn-small">+ Add</button>
+                    </div>
+                    <div class="inventory-location-tabs">
+                        <button class="location-tab active" data-location="Refrigerator">Fridge</button>
+                        <button class="location-tab" data-location="Freezer">Freezer</button>
+                        <button class="location-tab" data-location="Pantry">Pantry</button>
+                    </div>
+                    <div id="expiring-section" class="expiring-section hidden">
+                        <h4 class="section-label expiring-label">Expiring Soon</h4>
+                        <div id="expiring-items" class="inventory-list"></div>
+                    </div>
+                    <div id="inventory-list" class="inventory-list">
+                        <p class="empty-state">No items in inventory</p>
+                    </div>
+                </div>
+
+                <!-- Meal Planner Tab -->
+                <div id="planner-tab" class="tab-panel hidden">
+                    <div class="planner-header">
+                        <h3>Meal Planner</h3>
+                        <button id="plan-week-btn" class="btn btn-small btn-primary">Plan Week</button>
+                    </div>
+                    <div class="week-navigation">
+                        <button id="prev-week" class="icon-btn">&lt;</button>
+                        <span id="week-range">This Week</span>
+                        <button id="next-week" class="icon-btn">&gt;</button>
+                    </div>
+                    <div id="meal-plan-view" class="meal-plan-view">
+                        <p class="empty-state">No meals planned. Tap "Plan Week" to get started!</p>
+                    </div>
+                    <div id="grocery-preview" class="grocery-preview hidden">
+                        <h4 class="section-label">Grocery List Preview</h4>
+                        <div id="grocery-preview-list"></div>
+                        <button id="add-to-shopping-btn" class="btn btn-primary btn-full">Add Missing Items to Shopping</button>
                     </div>
                 </div>
 
@@ -304,6 +390,12 @@
                 <div class="settings-section">
                     <button id="sign-out-btn" class="btn btn-danger btn-full">Sign Out</button>
                 </div>
+
+                <div class="settings-section settings-legal">
+                    <a href="terms.html">Terms of Service</a>
+                    <span class="legal-divider">|</span>
+                    <a href="privacy.html">Privacy Policy</a>
+                </div>
             </div>
         </div>
 
@@ -349,6 +441,389 @@
                 </div>
             </div>
         </div>
+
+        <!-- Recipe Modal -->
+        <div id="recipe-modal" class="modal hidden">
+            <div class="modal-content recipe-modal-content">
+                <button class="close-btn" data-close="recipe-modal">&times;</button>
+                <h2 id="recipe-modal-title">Add Recipe</h2>
+                <form id="recipe-form">
+                    <div class="form-group">
+                        <label for="recipe-name">Recipe Name</label>
+                        <input type="text" id="recipe-name" required placeholder="e.g., Chicken Alfredo">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group form-group-half">
+                            <label for="recipe-category">Category</label>
+                            <select id="recipe-category">
+                                <option value="Uncategorized">Select category...</option>
+                            </select>
+                        </div>
+                        <div class="form-group form-group-half">
+                            <label for="recipe-servings">Servings</label>
+                            <input type="number" id="recipe-servings" value="4" min="1">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group form-group-half">
+                            <label for="recipe-prep-time">Prep Time (min)</label>
+                            <input type="number" id="recipe-prep-time" placeholder="15" min="0">
+                        </div>
+                        <div class="form-group form-group-half">
+                            <label for="recipe-cook-time">Cook Time (min)</label>
+                            <input type="number" id="recipe-cook-time" placeholder="30" min="0">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Ingredients</label>
+                        <div id="ingredients-list" class="ingredients-list">
+                            <!-- Ingredients added dynamically -->
+                        </div>
+                        <div class="add-ingredient-row">
+                            <input type="text" id="new-ingredient" placeholder="e.g., 2 cups flour">
+                            <button type="button" id="add-ingredient-btn" class="btn btn-small">Add</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="recipe-instructions">Instructions</label>
+                        <textarea id="recipe-instructions" rows="4" placeholder="Step by step instructions..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="recipe-source">Source URL (optional)</label>
+                        <input type="url" id="recipe-source" placeholder="https://...">
+                    </div>
+                    <input type="hidden" id="recipe-edit-id">
+                    <button type="submit" class="btn btn-primary btn-full">Save Recipe</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Recipe Import Modal -->
+        <div id="recipe-import-modal" class="modal hidden">
+            <div class="modal-content">
+                <button class="close-btn" data-close="recipe-import-modal">&times;</button>
+                <h2>Import Recipe</h2>
+                <div class="import-options">
+                    <div class="import-option">
+                        <label class="import-upload-area" id="recipe-upload-area">
+                            <input type="file" id="recipe-file-input" accept="image/*,.pdf,.txt" hidden>
+                            <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor">
+                                <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>
+                            </svg>
+                            <span>Upload screenshot or photo</span>
+                            <span class="import-hint">Supports images and PDFs</span>
+                        </label>
+                    </div>
+                    <div class="divider"><span>or</span></div>
+                    <div class="import-option">
+                        <label for="recipe-paste-text">Paste recipe text</label>
+                        <textarea id="recipe-paste-text" rows="6" placeholder="Paste your recipe here..."></textarea>
+                        <button type="button" id="parse-recipe-text-btn" class="btn btn-secondary btn-full">Parse Recipe</button>
+                    </div>
+                </div>
+                <div id="recipe-import-loading" class="document-loading hidden">
+                    <div class="spinner"></div>
+                    <p>Parsing recipe with AI...</p>
+                </div>
+                <div id="recipe-import-preview" class="hidden">
+                    <h3>Parsed Recipe Preview</h3>
+                    <div id="parsed-recipe-preview"></div>
+                    <div class="document-actions">
+                        <button id="recipe-import-confirm-btn" class="btn btn-primary">Save Recipe</button>
+                        <button id="recipe-import-edit-btn" class="btn btn-secondary">Edit First</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recipe View Modal -->
+        <div id="recipe-view-modal" class="modal hidden">
+            <div class="modal-content recipe-view-content">
+                <button class="close-btn" data-close="recipe-view-modal">&times;</button>
+                <div id="recipe-view-header" class="recipe-view-header">
+                    <h2 id="recipe-view-name">Recipe Name</h2>
+                    <div class="recipe-view-meta">
+                        <span id="recipe-view-category" class="category-badge">Category</span>
+                        <span id="recipe-view-time" class="recipe-time"></span>
+                    </div>
+                </div>
+                <div class="recipe-view-actions">
+                    <button id="recipe-favorite-btn" class="icon-btn" title="Favorite">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                        </svg>
+                    </button>
+                    <button id="recipe-edit-btn" class="icon-btn" title="Edit">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                        </svg>
+                    </button>
+                    <button id="recipe-delete-btn" class="icon-btn" title="Delete">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="recipe-view-section">
+                    <h4>Ingredients <span id="recipe-view-servings">(4 servings)</span></h4>
+                    <ul id="recipe-view-ingredients" class="recipe-ingredients-list"></ul>
+                </div>
+                <div class="recipe-view-section">
+                    <h4>Instructions</h4>
+                    <div id="recipe-view-instructions" class="recipe-instructions"></div>
+                </div>
+                <div class="recipe-view-footer">
+                    <button id="add-recipe-to-plan-btn" class="btn btn-secondary">Add to Meal Plan</button>
+                    <button id="add-ingredients-to-shopping-btn" class="btn btn-primary">Add to Shopping List</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Inventory Modal -->
+        <div id="inventory-modal" class="modal hidden">
+            <div class="modal-content">
+                <button class="close-btn" data-close="inventory-modal">&times;</button>
+                <h2 id="inventory-modal-title">Add to Inventory</h2>
+                <form id="inventory-form">
+                    <div class="form-group">
+                        <label for="inventory-name">Item Name</label>
+                        <input type="text" id="inventory-name" required placeholder="e.g., Chicken breast">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group form-group-half">
+                            <label for="inventory-quantity">Quantity</label>
+                            <input type="number" id="inventory-quantity" value="1" min="0" step="0.5">
+                        </div>
+                        <div class="form-group form-group-half">
+                            <label for="inventory-unit">Unit</label>
+                            <select id="inventory-unit">
+                                <option value="">-</option>
+                                <option value="lbs">lbs</option>
+                                <option value="oz">oz</option>
+                                <option value="cups">cups</option>
+                                <option value="pieces">pieces</option>
+                                <option value="packages">packages</option>
+                                <option value="bottles">bottles</option>
+                                <option value="cans">cans</option>
+                                <option value="bags">bags</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="inventory-location">Storage Location</label>
+                        <select id="inventory-location" required>
+                            <option value="Refrigerator">Refrigerator</option>
+                            <option value="Freezer">Freezer</option>
+                            <option value="Pantry">Pantry</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="inventory-expiration">Expiration Date</label>
+                        <input type="date" id="inventory-expiration">
+                    </div>
+                    <div class="form-group">
+                        <label for="inventory-notes">Notes (optional)</label>
+                        <input type="text" id="inventory-notes" placeholder="e.g., Opened on Monday">
+                    </div>
+                    <input type="hidden" id="inventory-edit-id">
+                    <button type="submit" class="btn btn-primary btn-full">Save Item</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Meal Planner Wizard Modal -->
+        <div id="planner-wizard-modal" class="modal hidden">
+            <div class="modal-content planner-wizard-content">
+                <button class="close-btn" data-close="planner-wizard-modal">&times;</button>
+                <div class="wizard-progress">
+                    <div class="wizard-step active" data-step="1">1</div>
+                    <div class="wizard-step" data-step="2">2</div>
+                    <div class="wizard-step" data-step="3">3</div>
+                    <div class="wizard-step" data-step="4">4</div>
+                    <div class="wizard-step" data-step="5">5</div>
+                </div>
+
+                <!-- Step 1: Days needed -->
+                <div id="wizard-step-1" class="wizard-panel active">
+                    <h2>How many meals this week?</h2>
+                    <p class="wizard-description">Select which days you need to cook dinner</p>
+                    <div class="day-selector">
+                        <label class="day-checkbox"><input type="checkbox" value="Sun" checked><span>Sun</span></label>
+                        <label class="day-checkbox"><input type="checkbox" value="Mon" checked><span>Mon</span></label>
+                        <label class="day-checkbox"><input type="checkbox" value="Tue" checked><span>Tue</span></label>
+                        <label class="day-checkbox"><input type="checkbox" value="Wed" checked><span>Wed</span></label>
+                        <label class="day-checkbox"><input type="checkbox" value="Thu" checked><span>Thu</span></label>
+                        <label class="day-checkbox"><input type="checkbox" value="Fri" checked><span>Fri</span></label>
+                        <label class="day-checkbox"><input type="checkbox" value="Sat" checked><span>Sat</span></label>
+                    </div>
+                    <div class="wizard-nav">
+                        <button type="button" class="btn btn-primary wizard-next">Next</button>
+                    </div>
+                </div>
+
+                <!-- Step 2: Items to use up -->
+                <div id="wizard-step-2" class="wizard-panel hidden">
+                    <h2>Items to use up</h2>
+                    <p class="wizard-description">Select items expiring soon that you want to prioritize</p>
+                    <div id="use-up-items" class="checklist">
+                        <p class="empty-state">No items expiring soon</p>
+                    </div>
+                    <div class="wizard-nav">
+                        <button type="button" class="btn btn-secondary wizard-back">Back</button>
+                        <button type="button" class="btn btn-primary wizard-next">Next</button>
+                    </div>
+                </div>
+
+                <!-- Step 3: Category requirements -->
+                <div id="wizard-step-3" class="wizard-panel hidden">
+                    <h2>Meal variety</h2>
+                    <p class="wizard-description">How many of each type of meal do you want?</p>
+                    <div id="category-requirements" class="category-requirements">
+                        <!-- Categories added dynamically -->
+                    </div>
+                    <div class="wizard-nav">
+                        <button type="button" class="btn btn-secondary wizard-back">Back</button>
+                        <button type="button" class="btn btn-primary wizard-next">Next</button>
+                    </div>
+                </div>
+
+                <!-- Step 4: Must-include recipes -->
+                <div id="wizard-step-4" class="wizard-panel hidden">
+                    <h2>Must-include recipes</h2>
+                    <p class="wizard-description">Any recipes you definitely want to make this week?</p>
+                    <div class="search-bar">
+                        <input type="text" id="must-include-search" placeholder="Search your recipes...">
+                    </div>
+                    <div id="must-include-list" class="recipe-select-list">
+                        <!-- Recipes shown here -->
+                    </div>
+                    <div id="selected-must-include" class="selected-recipes">
+                        <h4>Selected recipes:</h4>
+                        <div id="must-include-selected-list"></div>
+                    </div>
+                    <div class="wizard-nav">
+                        <button type="button" class="btn btn-secondary wizard-back">Back</button>
+                        <button type="button" class="btn btn-primary wizard-next">Generate Suggestions</button>
+                    </div>
+                </div>
+
+                <!-- Step 5: Review suggestions -->
+                <div id="wizard-step-5" class="wizard-panel hidden">
+                    <h2>Your meal plan</h2>
+                    <p class="wizard-description">Review and adjust your suggested meals</p>
+                    <div id="meal-suggestions" class="meal-suggestions">
+                        <!-- Suggestions rendered here -->
+                    </div>
+                    <div id="suggestion-stats" class="suggestion-stats"></div>
+                    <div class="wizard-nav">
+                        <button type="button" class="btn btn-secondary wizard-back">Back</button>
+                        <button type="button" id="regenerate-btn" class="btn btn-secondary">Regenerate</button>
+                        <button type="button" id="accept-plan-btn" class="btn btn-primary">Accept Plan</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ingredient Check Modal -->
+        <div id="ingredient-check-modal" class="modal hidden">
+            <div class="modal-content">
+                <button class="close-btn" data-close="ingredient-check-modal">&times;</button>
+                <h2>What do you have?</h2>
+                <p class="wizard-description">Check off ingredients you already have at home</p>
+                <div id="ingredient-checklist" class="ingredient-checklist">
+                    <!-- Ingredients listed here -->
+                </div>
+                <div class="ingredient-check-summary">
+                    <span id="have-count">0</span> items you have | <span id="need-count">0</span> items to buy
+                </div>
+                <div class="document-actions">
+                    <button id="ingredient-check-done-btn" class="btn btn-primary">Add Missing to Shopping List</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recipe Select Modal (for meal planner) -->
+        <div id="recipe-select-modal" class="modal hidden">
+            <div class="modal-content">
+                <button class="close-btn" data-close="recipe-select-modal">&times;</button>
+                <h2>Select a Recipe</h2>
+                <div class="search-bar">
+                    <input type="text" id="recipe-select-search" placeholder="Search recipes...">
+                </div>
+                <div id="recipe-select-list" class="recipe-select-list">
+                    <!-- Recipes listed here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Agenda Item Modal -->
+        <div id="agenda-modal" class="modal hidden">
+            <div class="modal-content">
+                <button class="close-btn" data-close="agenda-modal">&times;</button>
+                <h2 id="agenda-modal-title">Add Agenda Item</h2>
+                <form id="agenda-form">
+                    <div class="form-group">
+                        <label for="agenda-topic">Topic</label>
+                        <input type="text" id="agenda-topic" required placeholder="e.g., Vacation planning">
+                    </div>
+                    <div class="form-group">
+                        <label for="agenda-description">Details (optional)</label>
+                        <textarea id="agenda-description" rows="3" placeholder="Additional context or notes..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="agenda-priority">Priority</label>
+                        <select id="agenda-priority">
+                            <option value="normal">Normal</option>
+                            <option value="high">High - Discuss First</option>
+                            <option value="low">Low - If Time Permits</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="agenda-added-by">Added by</label>
+                        <input type="text" id="agenda-added-by" readonly>
+                    </div>
+                    <input type="hidden" id="agenda-edit-id">
+                    <button type="submit" class="btn btn-primary btn-full">Save Item</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Category Manager Modal -->
+        <div id="category-modal" class="modal hidden">
+            <div class="modal-content">
+                <button class="close-btn" data-close="category-modal">&times;</button>
+                <h2>Manage Categories</h2>
+                <div id="category-list" class="category-manager-list">
+                    <!-- Categories listed here -->
+                </div>
+                <div class="add-category-row">
+                    <input type="text" id="new-category-name" placeholder="New category name">
+                    <button type="button" id="add-category-btn" class="btn btn-small">Add</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Household Created Modal -->
+        <div id="household-created-modal" class="modal hidden">
+            <div class="modal-content household-created-content">
+                <div class="success-icon">
+                    <svg viewBox="0 0 24 24" width="64" height="64" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                </div>
+                <h2>Household Created!</h2>
+                <p class="modal-description">Share this invite code with family members to let them join your household:</p>
+                <div class="invite-code-large">
+                    <code id="new-household-invite-code">------</code>
+                </div>
+                <div class="invite-code-actions">
+                    <button id="copy-new-invite-code" class="btn btn-secondary">Copy Code</button>
+                    <button id="share-invite-code" class="btn btn-secondary">Share</button>
+                </div>
+                <p class="invite-code-note">This code expires in 7 days. You can generate a new one anytime in Settings.</p>
+                <button id="household-created-continue" class="btn btn-primary btn-full">Continue to App</button>
+            </div>
+        </div>
     </div>
 
     <!-- Firebase SDK -->
@@ -360,6 +835,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
     <!-- App Scripts -->
+    <script src="js/security.js"></script>
     <script src="js/firebase-config.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/household.js"></script>
@@ -371,6 +847,11 @@
     <script src="js/locations.js"></script>
     <script src="js/reminders.js"></script>
     <script src="js/notifications.js"></script>
+    <script src="js/recipes.js"></script>
+    <script src="js/inventory.js"></script>
+    <script src="js/meal-categories.js"></script>
+    <script src="js/meal-planner.js"></script>
+    <script src="js/agenda.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

@@ -1,8 +1,8 @@
 // Smart Reminders Module (OpenRouteService for driving directions)
 const Reminders = {
-    // OpenRouteService API
-    ORS_API_KEY: 'YOUR_OPENROUTESERVICE_API_KEY', // TODO: Replace with your key
-    ORS_BASE: 'https://api.openrouteservice.org',
+    // Proxy through Cloudflare Worker to keep API key server-side
+    // The worker handles ORS API calls securely
+    PROXY_URL: 'https://groqapikey.jcl-colden.workers.dev',
 
     homeAddress: null,
     homeCoords: null,
@@ -52,54 +52,71 @@ const Reminders = {
         }
     },
 
-    // Geocode an address to coordinates
+    // Geocode an address to coordinates (via proxy)
     async geocode(address) {
-        try {
-            const response = await fetch(
-                `${this.ORS_BASE}/geocode/search?` +
-                `api_key=${this.ORS_API_KEY}&` +
-                `text=${encodeURIComponent(address)}&` +
-                `size=1`
-            );
+        if (!Auth.currentUser) return null;
 
-            if (!response.ok) throw new Error('Geocoding failed');
+        try {
+            const response = await fetch(this.PROXY_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Firebase-UID': Auth.currentUser.uid
+                },
+                body: JSON.stringify({
+                    action: 'geocode',
+                    address: address
+                })
+            });
+
+            if (!response.ok) {
+                // Fallback: feature disabled if proxy doesn't support geocoding
+                return null;
+            }
 
             const data = await response.json();
-
-            if (data.features && data.features.length > 0) {
-                const coords = data.features[0].geometry.coordinates;
-                return { lng: coords[0], lat: coords[1] };
+            if (data.coords) {
+                return data.coords;
             }
 
             return null;
         } catch (error) {
-            console.error('Geocoding error:', error);
+            // Silently fail - smart reminders just won't work
             return null;
         }
     },
 
-    // Get driving duration between two points (in minutes)
+    // Get driving duration between two points (in minutes) via proxy
     async getDrivingDuration(fromCoords, toCoords) {
-        try {
-            const response = await fetch(
-                `${this.ORS_BASE}/v2/directions/driving-car?` +
-                `api_key=${this.ORS_API_KEY}&` +
-                `start=${fromCoords.lng},${fromCoords.lat}&` +
-                `end=${toCoords.lng},${toCoords.lat}`
-            );
+        if (!Auth.currentUser) return null;
 
-            if (!response.ok) throw new Error('Directions failed');
+        try {
+            const response = await fetch(this.PROXY_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Firebase-UID': Auth.currentUser.uid
+                },
+                body: JSON.stringify({
+                    action: 'directions',
+                    from: fromCoords,
+                    to: toCoords
+                })
+            });
+
+            if (!response.ok) {
+                // Fallback: feature disabled if proxy doesn't support directions
+                return null;
+            }
 
             const data = await response.json();
-
-            if (data.features && data.features.length > 0) {
-                const durationSeconds = data.features[0].properties.summary.duration;
-                return Math.ceil(durationSeconds / 60); // Convert to minutes, round up
+            if (data.durationMinutes) {
+                return data.durationMinutes;
             }
 
             return null;
         } catch (error) {
-            console.error('Directions error:', error);
+            // Silently fail - smart reminders just won't work
             return null;
         }
     },

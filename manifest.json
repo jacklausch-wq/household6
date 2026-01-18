@@ -2,11 +2,14 @@
     "name": "Household6",
     "short_name": "Household6",
     "description": "Your household command center - manage tasks, events, and schedules together",
-    "start_url": "/",
+    "start_url": "/index.html",
+    "scope": "/",
     "display": "standalone",
     "background_color": "#FBF9F7",
     "theme_color": "#C4A07A",
     "orientation": "portrait",
+    "id": "/",
+    "prefer_related_applications": false,
     "icons": [
         {
             "src": "icons/icon-72.png",

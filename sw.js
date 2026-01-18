@@ -1,29 +1,38 @@
 // Household6 Service Worker
-const CACHE_NAME = 'household6-v1';
+const CACHE_NAME = 'household6-v6'; // Bumped version for security fixes
 const STATIC_ASSETS = [
     '/',
     '/index.html',
+    '/terms.html',
+    '/privacy.html',
     '/css/styles.css',
+    '/js/security.js', // Security utilities - MUST be cached
     '/js/app.js',
     '/js/firebase-config.js',
     '/js/auth.js',
     '/js/household.js',
     '/js/tasks.js',
+    '/js/shopping.js',
     '/js/calendar.js',
+    '/js/gemini.js',
     '/js/voice.js',
     '/js/locations.js',
     '/js/reminders.js',
     '/js/notifications.js',
-    '/manifest.json'
+    '/js/recipes.js',
+    '/js/inventory.js',
+    '/js/meal-categories.js',
+    '/js/meal-planner.js',
+    '/js/agenda.js',
+    '/manifest.json',
+    '/pages/voice.html'
 ];
 
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
-    console.log('Service Worker installing...');
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then((cache) => {
-                console.log('Caching static assets');
                 return cache.addAll(STATIC_ASSETS);
             })
             .then(() => self.skipWaiting())
@@ -32,7 +41,6 @@ self.addEventListener('install', (event) => {
 
 // Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
-    console.log('Service Worker activating...');
     event.waitUntil(
         caches.keys()
             .then((cacheNames) => {
@@ -90,8 +98,6 @@ self.addEventListener('fetch', (event) => {
 
 // Push notification event
 self.addEventListener('push', (event) => {
-    console.log('Push notification received');
-
     let data = { title: 'Household6', body: 'You have a notification' };
 
     if (event.data) {
@@ -118,7 +124,6 @@ self.addEventListener('push', (event) => {
 
 // Notification click event
 self.addEventListener('notificationclick', (event) => {
-    console.log('Notification clicked');
     event.notification.close();
 
     event.waitUntil(
@@ -140,8 +145,6 @@ self.addEventListener('notificationclick', (event) => {
 
 // Background sync for offline actions
 self.addEventListener('sync', (event) => {
-    console.log('Background sync:', event.tag);
-
     if (event.tag === 'sync-tasks') {
         event.waitUntil(syncTasks());
     }
@@ -150,8 +153,6 @@ self.addEventListener('sync', (event) => {
 // Sync tasks that were created offline
 async function syncTasks() {
     // This would sync any offline-created tasks
-    // For now, just log
-    console.log('Syncing offline tasks...');
 }
 
 // Periodic background sync for morning reports
@@ -163,5 +164,4 @@ self.addEventListener('periodicsync', (event) => {
 
 async function sendMorningReport() {
     // This would fetch today's data and send a notification
-    console.log('Sending morning report...');
 }

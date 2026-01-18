@@ -3,15 +3,39 @@ const Auth = {
     currentUser: null,
     accessToken: null,
 
+    // Allowed emails - only these can access the app
+    // Leave empty [] to allow anyone, or add specific emails
+    ALLOWED_EMAILS: [
+        // 'yourname@gmail.com',
+        // 'spouse@gmail.com',
+    ],
+
+    // Check if email is authorized
+    isEmailAllowed(email) {
+        // If no allowlist configured, allow everyone
+        if (this.ALLOWED_EMAILS.length === 0) return true;
+        return this.ALLOWED_EMAILS.includes(email.toLowerCase());
+    },
+
     // Initialize auth state listener
     init() {
         return new Promise((resolve) => {
             auth.onAuthStateChanged(async (user) => {
                 if (user) {
+                    // Check if returning user is still allowed
+                    if (!this.isEmailAllowed(user.email)) {
+                        // User email no longer authorized
+                        await auth.signOut();
+                        this.currentUser = null;
+                        this.accessToken = null;
+                        resolve(null);
+                        return;
+                    }
+
                     this.currentUser = user;
                     // Get the access token for Google Calendar API
                     const credential = await user.getIdTokenResult();
-                    this.accessToken = localStorage.getItem('googleAccessToken');
+                    this.accessToken = sessionStorage.getItem('googleAccessToken');
                     resolve(user);
                 } else {
                     this.currentUser = null;
@@ -35,23 +59,30 @@ const Auth = {
             });
 
             const result = await auth.signInWithPopup(provider);
+
+            // Check if email is allowed
+            if (!this.isEmailAllowed(result.user.email)) {
+                await auth.signOut();
+                throw new Error('Access denied. Your email is not authorized to use this app.');
+            }
+
             // Get the OAuth access token from the credential
             const credential = firebase.auth.GoogleAuthProvider.credentialFromResult(result);
             if (credential && credential.accessToken) {
                 this.accessToken = credential.accessToken;
-                localStorage.setItem('googleAccessToken', this.accessToken);
-                console.log('Access token obtained successfully');
+                sessionStorage.setItem('googleAccessToken', this.accessToken);
+                // Access token obtained
             } else if (result.credential && result.credential.accessToken) {
                 // Fallback for older Firebase versions
                 this.accessToken = result.credential.accessToken;
-                localStorage.setItem('googleAccessToken', this.accessToken);
-                console.log('Access token obtained (fallback)');
+                sessionStorage.setItem('googleAccessToken', this.accessToken);
+                // Access token obtained (fallback)
             } else {
-                console.warn('No access token in credential - calendar sync may not work');
+                // No access token in credential - calendar sync may not work
             }
             return result.user;
         } catch (error) {
-            console.error('Sign in error:', error);
+            // Sign in error handled by throw
             throw error;
         }
     },
@@ -60,12 +91,12 @@ const Auth = {
     async signOut() {
         try {
             await auth.signOut();
-            localStorage.removeItem('googleAccessToken');
+            sessionStorage.removeItem('googleAccessToken');
             localStorage.removeItem('householdId');
             this.currentUser = null;
             this.accessToken = null;
         } catch (error) {
-            console.error('Sign out error:', error);
+            // Sign out error handled by throw
             throw error;
         }
     },
@@ -111,14 +142,14 @@ const Auth = {
             const credential = firebase.auth.GoogleAuthProvider.credentialFromResult(result);
             if (credential && credential.accessToken) {
                 this.accessToken = credential.accessToken;
-                localStorage.setItem('googleAccessToken', this.accessToken);
+                sessionStorage.setItem('googleAccessToken', this.accessToken);
             } else if (result.credential && result.credential.accessToken) {
                 this.accessToken = result.credential.accessToken;
-                localStorage.setItem('googleAccessToken', this.accessToken);
+                sessionStorage.setItem('googleAccessToken', this.accessToken);
             }
             return this.accessToken;
         } catch (error) {
-            console.error('Token refresh error:', error);
+            // Token refresh error handled by throw
             throw error;
         }
     }

@@ -45,6 +45,15 @@ const Household = {
     async join(inviteCode) {
         if (!Auth.currentUser) throw new Error('Not authenticated');
 
+        // Rate limit invite code attempts to prevent brute-force attacks
+        const rateLimitKey = `invite_${Auth.currentUser.uid}`;
+        if (typeof Security !== 'undefined' && Security.rateLimiter) {
+            if (!Security.rateLimiter.check(rateLimitKey, 5, 60000)) {
+                const waitTime = Math.ceil(Security.rateLimiter.getWaitTime(rateLimitKey, 60000) / 1000);
+                throw new Error(`Too many attempts. Please wait ${waitTime} seconds.`);
+            }
+        }
+
         // Find household with this invite code
         const snapshot = await db.collection('households')
             .where('inviteCode', '==', inviteCode.toUpperCase())
@@ -75,6 +84,11 @@ const Household = {
         // Update user's household reference
         await Auth.updateUserProfile({ householdId: householdDoc.id });
         localStorage.setItem('householdId', householdDoc.id);
+
+        // Reset rate limit on successful join
+        if (typeof Security !== 'undefined' && Security.rateLimiter) {
+            Security.rateLimiter.reset(`invite_${Auth.currentUser.uid}`);
+        }
 
         this.currentHousehold = { id: householdDoc.id, ...householdData };
         return this.currentHousehold;

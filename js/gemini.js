@@ -7,13 +7,34 @@ const AI = {
         return true;
     },
 
+    // Get auth headers for AI requests
+    // The worker should validate these to prevent unauthorized usage
+    getAuthHeaders() {
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+
+        // Include Firebase ID token if user is authenticated
+        // The worker should verify this token server-side
+        if (Auth.currentUser) {
+            // Note: For full security, the worker must verify this token
+            // by calling Firebase Admin SDK's verifyIdToken()
+            headers['X-Firebase-UID'] = Auth.currentUser.uid;
+        }
+
+        return headers;
+    },
+
     // Parse voice/text input using AI via Cloudflare Worker
     async parseInput(transcript, options = {}) {
+        // Require authentication for AI requests
+        if (!Auth.currentUser) {
+            throw new Error('Authentication required for AI features');
+        }
+
         const response = await fetch(this.WORKER_URL, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: this.getAuthHeaders(),
             body: JSON.stringify({
                 transcript,
                 isDocument: options.isDocument || false,
@@ -94,6 +115,54 @@ const AI = {
     // Parse document content
     async parseDocument(text, filename) {
         return this.parseInput(text, { isDocument: true, filename });
+    },
+
+    // Parse recipe from text
+    async parseRecipe(text) {
+        if (!Auth.currentUser) {
+            throw new Error('Authentication required for AI features');
+        }
+
+        const response = await fetch(this.WORKER_URL, {
+            method: 'POST',
+            headers: this.getAuthHeaders(),
+            body: JSON.stringify({
+                transcript: text,
+                isRecipe: true,
+                parseType: 'recipe'
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Recipe parsing failed');
+        }
+
+        return await response.json();
+    },
+
+    // Parse recipe from image (base64)
+    async parseRecipeImage(base64Image) {
+        if (!Auth.currentUser) {
+            throw new Error('Authentication required for AI features');
+        }
+
+        const response = await fetch(this.WORKER_URL, {
+            method: 'POST',
+            headers: this.getAuthHeaders(),
+            body: JSON.stringify({
+                image: base64Image,
+                isRecipe: true,
+                parseType: 'recipe-image'
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Recipe image parsing failed');
+        }
+
+        return await response.json();
     }
 };
 

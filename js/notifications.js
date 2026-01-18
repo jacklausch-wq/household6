@@ -21,7 +21,7 @@ const Notifications = {
     // Request notification permission
     async requestPermission() {
         if (!('Notification' in window)) {
-            console.warn('Notifications not supported');
+            // Notifications not supported
             return false;
         }
 
@@ -30,7 +30,7 @@ const Notifications = {
             this.permission = permission;
             return permission === 'granted';
         } catch (error) {
-            console.error('Notification permission error:', error);
+            // Notification permission error
             return false;
         }
     },
@@ -81,7 +81,7 @@ const Notifications = {
 
             return notification;
         } catch (error) {
-            console.error('Notification error:', error);
+            // Notification error
             return null;
         }
     },
@@ -114,7 +114,7 @@ const Notifications = {
             this.scheduleMorningReport();
         }, msUntilReport);
 
-        console.log(`Morning report scheduled for ${nextReport.toLocaleString()}`);
+        // Morning report scheduled
     },
 
     // Generate and send the morning report
@@ -158,7 +158,7 @@ const Notifications = {
             });
 
         } catch (error) {
-            console.error('Morning report error:', error);
+            // Morning report error
         }
     },
 
